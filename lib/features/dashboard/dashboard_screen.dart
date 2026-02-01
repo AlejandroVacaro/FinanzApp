@@ -29,12 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DateTime? selectedMonth; // Null means "All Time"
   int selectedYear = DateTime.now().year;
 
-  @override
-  void initState() {
-    super.initState();
-    // Default to current month
-    selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  }
+
 
   @override
   Widget build(BuildContext context) {
