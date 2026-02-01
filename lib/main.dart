@@ -47,7 +47,7 @@ class FinanzApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FinanzApp 🚀',
+      title: 'FinanzApp',
       locale: const Locale('es'),
       scrollBehavior: MyCustomScrollBehavior(),
       debugShowCheckedModeBanner: false,

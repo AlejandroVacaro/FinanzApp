@@ -373,7 +373,7 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
                   return ListTile(
                     leading: CircleAvatar(backgroundColor: _getColor(cat.type).withOpacity(0.2), child: Icon(_getIcon(cat.type), color: _getColor(cat.type), size: 18)),
                     title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(cat.type.name.toUpperCase(), style: const TextStyle(fontSize: 10)),
+                    subtitle: Text(_getCategoryTypeName(cat.type).toUpperCase(), style: const TextStyle(fontSize: 10)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -439,7 +439,7 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
               DropdownButton<CategoryType>(
                 value: type,
                 isExpanded: true,
-                items: CategoryType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.name.toUpperCase()))).toList(),
+                items: CategoryType.values.map((t) => DropdownMenuItem(value: t, child: Text(_getCategoryTypeName(t).toUpperCase()))).toList(),
                 onChanged: (val) => setState(() => type = val!),
               ),
             ],
@@ -468,6 +468,15 @@ class _ManageCategoriesDialogState extends State<_ManageCategoriesDialog> {
   }
   IconData _getIcon(CategoryType t) {
      switch (t) { case CategoryType.income: return Icons.arrow_upward; case CategoryType.expense: return Icons.arrow_downward; case CategoryType.transfer: return Icons.compare_arrows; case CategoryType.savings: return Icons.savings; }
+  }
+
+  String _getCategoryTypeName(CategoryType t) {
+    switch (t) {
+      case CategoryType.income: return "Ingreso";
+      case CategoryType.expense: return "Egreso";
+      case CategoryType.savings: return "Ahorro";
+      case CategoryType.transfer: return "Movimiento Puente";
+    }
   }
 }
 

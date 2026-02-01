@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../config/app_theme.dart';
 import 'glass_container.dart';
+import '../services/auth_service.dart';
 
 class CustomSidebar extends StatelessWidget {
   final int selectedIndex;
@@ -86,30 +87,51 @@ class CustomSidebar extends StatelessWidget {
           ),
           
           // Profile / Bottom Area
-          const GlassContainer(
-            height: 100,
-            padding: EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
+          PopupMenuButton(
+            offset: const Offset(60, -50),
+            color: AppColors.backgroundDark,
+            elevation: 10,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            ),
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                onTap: () => AuthService().signOut(),
+                child: const Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.accentPink,
-                      radius: 18,
-                      child: Icon(Icons.person, size: 20, color: Colors.white),
-                    ),
+                    Icon(Icons.logout, color: Colors.redAccent, size: 20),
                     SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Usuario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        Text('Pro Member', style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
-                      ],
-                    ),
+                    Text('Cerrar Sesión', style: TextStyle(color: Colors.white)),
                   ],
                 ),
-              ],
+              ),
+            ],
+            child: const GlassContainer(
+              height: 100,
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppColors.accentPink,
+                        radius: 18,
+                        child: Icon(Icons.person, size: 20, color: Colors.white),
+                      ),
+                      SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Usuario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text('Pro Member', style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2),
         ],

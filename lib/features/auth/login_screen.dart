@@ -60,12 +60,20 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo placeholder
-              const Icon(
-                Icons.account_balance_wallet,
-                size: 80,
-                color: Colors.white,
-              ),
+              // Animated Rocket Logo
+              Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF4FA3FF)], // AppColors (Purple to Blue)
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 50),
+              ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
               const SizedBox(height: 20),
               const Text(
                 'FinanzApp',
@@ -105,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 30),
                     TextField(
                       controller: _emailController,
+                      style: const TextStyle(color: Color(0xFF2C3E50)),
                       decoration: InputDecoration(
                         labelText: 'Email',
                         prefixIcon: const Icon(Icons.email_outlined),
@@ -117,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     TextField(
                       controller: _passwordController,
+                      style: const TextStyle(color: Color(0xFF2C3E50)),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
                         prefixIcon: const Icon(Icons.lock_outline),
