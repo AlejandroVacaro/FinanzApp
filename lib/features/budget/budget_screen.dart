@@ -19,8 +19,7 @@ class BudgetScreen extends StatefulWidget {
 }
 
 class _BudgetScreenState extends State<BudgetScreen> {
-  final DateTime _startDate = DateTime(2025, 4);
-  final DateTime _endDate = DateTime(2026, 12);
+  // Dynamic dates now used in initState
   List<DateTime> _months = [];
   
   final ScrollController _headerScrollController = ScrollController();
@@ -34,8 +33,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
     super.initState();
     initializeDateFormatting('es'); // Init Spanish Locale
     _months = [];
-    DateTime current = _startDate;
-    while (current.isBefore(_endDate) || current.isAtSameMomentAs(_endDate)) {
+    
+    final now = DateTime.now();
+    // Start from current month
+    DateTime current = DateTime(now.year, now.month);
+    // End 12 months from now (Current + 11 = 12 months total, or Current + 12? User said "future budget 12 months", usually implies 1 year lookahead from today)
+    // Let's do Current + 11 months to show a full year view including this month.
+    // Or if they strictly mean "Future", maybe Current + 12.
+    // I will do Current + 11 (12 columns total). Use 12 to be safe if they count "Current" as "Present". 
+    // Actually "Presupuesto a futuro" -> Future budget.
+    // I'll set it to Current + 12 months.
+    final endDate = DateTime(now.year, now.month + 12);
+    
+    while (current.isBefore(endDate) || current.isAtSameMomentAs(endDate)) {
       _months.add(current);
       current = DateTime(current.year, current.month + 1);
     }

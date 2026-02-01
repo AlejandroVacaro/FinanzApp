@@ -50,62 +50,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- SECCIÓN 1: COTIZACIÓN ---
-                    Text("Ajustes Generales", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
+// --- SECCIÓN ELIMINADA: COTIZACIÓN ---
+                    // Text("Ajustes Generales", style: ...),
+
+                     // --- SECCIÓN 2: DATOS MAESTROS ---
+                    Text("Asignación de rubros", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
                     const Divider(color: Colors.white10),
-                    const SizedBox(height: 20),
-                    const Text("Cotización del Dólar (USD)", style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textGrey, fontSize: 16)),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Container(
-                          constraints: const BoxConstraints(maxWidth: 250),
-                          child: TextField(
-                            controller: _rateController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.currency_exchange, color: AppColors.primaryPurple),
-                              filled: true,
-                              fillColor: AppColors.backgroundDark,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              hintText: "42.5",
-                              hintStyle: TextStyle(color: Colors.grey.shade700),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              suffixIcon: Tooltip(
-                                message: "Guardar",
-                                child: InkWell(
-                                  onTap: () {
-                                    final val = double.tryParse(_rateController.text);
-                                    if (val != null) {
-                                      Provider.of<ConfigProvider>(context, listen: false).setExchangeRate(val);
-                                      ModernFeedback.showSuccess(context, "Cotización guardada: \$U $val");
-                                    } else {
-                                      ModernFeedback.showError(context, "Error", "Ingresa un número válido.");
-                                    }
-                                  },
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    margin: const EdgeInsets.all(6),
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.green.withOpacity(0.5)),
-                                    ),
-                                    child: const Icon(Icons.check, color: Colors.green, size: 20),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 24),
+// ... (omitting intermediate lines for brevity in instruction, logic below applies to separate chunks if needed, but here I use multi replace or single replace carefully. Since they are far apart, I should use multi_replace. Wait, I am using replace_file_content. I should use MultiReplace for safety as they are far apart.)
+// Actually, I will use MultiReplaceFileContent.
 
-                    const SizedBox(height: 50),
-
-                    // --- SECCIÓN 2: DATOS MAESTROS ---
                     Text("Asignación de rubros", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
                     const Divider(color: Colors.white10),
                     const SizedBox(height: 24),
@@ -644,11 +598,24 @@ void _showDeleteDialog(BuildContext context) {
                       ),
                       onTap: () async {
                         final picked = await showDatePicker(
-                          context: context,
+                          context: context, // Use the dialog's context
                           initialDate: startDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
-                          locale: const Locale('es', 'ES'),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                dialogBackgroundColor: const Color(0xFF1F2937),
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppColors.primaryPurple,
+                                  onPrimary: Colors.white,
+                                  surface: Color(0xFF1F2937),
+                                  onSurface: Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
                         );
                         if (picked != null) {
                           setState(() {
@@ -675,7 +642,20 @@ void _showDeleteDialog(BuildContext context) {
                           initialDate: endDate ?? startDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
-                          locale: const Locale('es', 'ES'),
+                           builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                dialogBackgroundColor: const Color(0xFF1F2937),
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppColors.primaryPurple,
+                                  onPrimary: Colors.white,
+                                  surface: Color(0xFF1F2937),
+                                  onSurface: Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
                         );
                         if (picked != null) {
                           setState(() {

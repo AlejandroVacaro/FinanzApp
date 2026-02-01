@@ -149,31 +149,46 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 double valDolares = 0.0;
                 
                 if (isBankAccount) {
-                    // Lógica posicional relativa:
-                    // Encontrar índice de Descripción
-                    // Si no hallamos descripción clara por header, asumimos posiciones fijas:
-                    // Screenshot: Fecha(0), Ref(1), Concepto(2), Desc(3), Debito(4), Credito(5), Saldos(6)...
-                    // User says: "valores que siguen enseguida a la derecha de la descripción son los débitos"
-                    
-                    int idxDesc = 3; // Default
-                    // Ajuste dinámico si la fila es corta o larga? Asumamos estructura fija basada en la descripción del usuario.
-                    
+                    // Lógica posicional dinámica basada en headers
+                    int idxDesc = -1;
+                    int idxDebit = -1;
+                    int idxCredit = -1;
+
+                    // Buscar índices en la fila de encabezados (dataStartIndex - 1)
+                    if (dataStartIndex > 0) {
+                        List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
+                        
+                        // 1. Descripción
+                        idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("desc") || h.contains("detalle") || h.contains("referencia"));
+                        
+                        // 2. Débito
+                        idxDebit = headers.indexWhere((h) => h.contains("débito") || h.contains("debito") || h.contains("retiro"));
+                        
+                        // 3. Crédito
+                        idxCredit = headers.indexWhere((h) => h.contains("crédito") || h.contains("credito") || h.contains("depósito") || h.contains("deposito"));
+                    }
+
+                    // Fallback si no encuentra headers (o si dataStartIndex es 0, raro)
+                    if (idxDesc == -1) idxDesc = 3; 
+                    if (idxDebit == -1) idxDebit = 4;
+                    if (idxCredit == -1) idxCredit = 5;
+
+                    // Ajuste de seguridad por si el fallback se pasa
                     if (row.length > idxDesc) description = row[idxDesc].toString();
                     
-                    int idxDebit = idxDesc + 1;
-                    int idxCredit = idxDesc + 2;
-
                     double debito = 0.0;
                     double credito = 0.0;
 
-                    if (row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
-                    if (row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
+                    if (idxDebit != -1 && row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
+                    if (idxCredit != -1 && row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
+
+                    // Si ambos son 0, probar índices adyacentes a la descripción (heurística común: Desc, Debito, Credito)
+                    if (debito == 0 && credito == 0 && idxDesc != -1) {
+                         if (row.length > idxDesc + 1) debito = _parseMontoRaw(row[idxDesc + 1]);
+                         if (row.length > idxDesc + 2) credito = _parseMontoRaw(row[idxDesc + 2]);
+                    }
 
                     // Banco: Débitos restan (gastos), Créditos suman (ingresos)
-                    // FinanzApp: Gastos negativos, Ingresos positivos.
-                    // Si viene "Debito: 100", es un gasto -> -100
-                    // Si viene "Credito: 100", es ingreso -> +100
-                    
                     if (debito != 0) {
                         amount = -debito.abs();
                     } else if (credito != 0) {
@@ -184,7 +199,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     
                     if (currency == "UYU") {
                         valPesos = amount;
-                        valDolares = 0; // Podríamos convertir si tuviéramos tasa, pero por ahora 0
+                        valDolares = 0; 
                     } else {
                         valDolares = amount;
                         valPesos = 0;
