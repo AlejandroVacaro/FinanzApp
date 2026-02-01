@@ -203,4 +203,114 @@ class ConfigProvider extends ChangeNotifier {
        const SnackBar(content: Text('Los datos están sincronizados en la nube.'))
      );
   }
+
+  // --- LEGACY MIGRATION ---
+  Future<void> restoreLegacyRules() async {
+    if (_uid == null) return;
+
+    final List<Map<String, String>> legacyRules = [
+      {'text': 'REPUBLICA AFAP S.A.', 'categoryId': 'Ingresos laborales'},
+      {'text': 'ALFEO GUSTAVO BRUM', 'categoryId': 'Alquiler'},
+      {'text': 'NOSTRUM TOWER', 'categoryId': 'Gastos comunes'},
+      {'text': 'SABROSO', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Copay', 'categoryId': 'Transporte'},
+      {'text': 'ALVAREZ LUBERTO DIEGO OSCAR', 'categoryId': 'Ingresos extra'},
+      {'text': 'PAGO DE SERVICIO POR BANRED SERVICIO DE PAGOS BANRED , UTE', 'categoryId': 'UTE'},
+      {'text': 'ANTEL', 'categoryId': 'ANTEL'},
+      {'text': 'CINES LIFE', 'categoryId': 'Salidas y ocio'},
+      {'text': 'FSOLID', 'categoryId': 'Impuestos y tributos'},
+      {'text': 'Lucky Experiencia', 'categoryId': 'Estética'},
+      {'text': 'RETIRO EFECTIVO', 'categoryId': 'Retiro de efectivo'},
+      {'text': 'NICOLAS SAMURIO', 'categoryId': 'Salud'},
+      {'text': 'Amvstor', 'categoryId': 'Artículos tecnológicos'},
+      {'text': 'Tiendas Montevideo', 'categoryId': 'Artículos del hogar'},
+      {'text': 'Envio Estado De Cta.', 'categoryId': 'Otros egresos'},
+      {'text': 'PAGO ELECTRONICO TARJETA CREDITO', 'categoryId': 'Movimiento puente'},
+      {'text': 'TIENDA INGLESA', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'RADIOTAXI141', 'categoryId': 'Transporte'},
+      {'text': 'ANCEL', 'categoryId': 'ANTEL'},
+      {'text': 'Seguro Saldo Deudor', 'categoryId': 'Impuestos y tributos'},
+      {'text': 'FARMASHOP', 'categoryId': 'Salud'},
+      {'text': 'TOP TECNO UY', 'categoryId': 'Artículos tecnológicos'},
+      {'text': 'KIOSKO TERMINAL', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'STM       REC RECARGAS S', 'categoryId': 'Transporte'},
+      {'text': 'ZURICH SANTANDER', 'categoryId': 'Impuestos y tributos'},
+      {'text': 'LA MOLIENDA ACJ', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'CPATU', 'categoryId': 'Transporte'},
+      {'text': 'DISCO N', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'CABIFY', 'categoryId': 'Transporte'},
+      {'text': 'SUPER DON PAULINO', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'TATA', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'zara', 'categoryId': 'Vestimenta'},
+      {'text': 'temu', 'categoryId': 'Vestimenta'},
+      {'text': 'Pago Supernet', 'categoryId': 'Movimiento puente'},
+      {'text': 'Apple Com Bill', 'categoryId': 'Suscripciones'},
+      {'text': 'BELEN BENITEZ DESPEDIDA', 'categoryId': 'Salidas y ocio'},
+      {'text': 'YERLI OZAN NO SE QUE ES', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'ALEJANDRO VACARO JIME PERALTA', 'categoryId': 'Otros egresos'},
+      {'text': 'LAURA CARLE BAR RODO', 'categoryId': 'Salidas y ocio'},
+      {'text': 'Qpasopana', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Quesur', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Capcut', 'categoryId': 'Suscripciones'},
+      {'text': 'Underar Cuota', 'categoryId': 'Vestimenta'},
+      {'text': 'Cat     Cuota', 'categoryId': 'Vestimenta'},
+      {'text': 'Mariobarakus', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'LAPETINA  GC', 'categoryId': 'Gastos comunes'},
+      {'text': '24117852 DE LA CRUZ CU A MARCELO AGUST', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Autoservice Vanix', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Merpago Sep     Cuota', 'categoryId': 'Artículos tecnológicos'},
+      {'text': 'Agencia Central Sa', 'categoryId': 'Transporte'},
+      {'text': 'Crew', 'categoryId': 'Salidas y ocio'},
+      {'text': '24 Horas Santy', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Cellular Center Cuota 01 02', 'categoryId': 'Otros egresos'},
+      {'text': 'Angela Moreira', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Merpago Newyearbynosle', 'categoryId': 'Salidas y ocio'},
+      {'text': 'Taxi Paysandu', 'categoryId': 'Transporte'},
+      {'text': 'Merpago Nutrifi Cuota', 'categoryId': 'Estética'},
+      {'text': 'Merpago Mcdonalds', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Kiosco Nueva Paula', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Raciones Del Litoral', 'categoryId': 'Otros egresos'},
+      {'text': 'Bimba Bruder Juncal', 'categoryId': 'Salidas y ocio'},
+      {'text': 'Bimba Bruder Av Salto', 'categoryId': 'Salidas y ocio'},
+      {'text': 'Altosur 6', 'categoryId': 'Alimentación e higiene'},
+      {'text': 'Rodrigo Muebles', 'categoryId': 'Artículos tecnológicos'},
+      {'text': 'MERPAGO.ROCKFORD', 'categoryId': 'Vestimenta'},
+      {'text': 'MERPAGO.FORUSUY', 'categoryId': 'Vestimenta'},
+      {'text': 'Merpago Merrell Cuota', 'categoryId': 'Vestimenta'},
+      {'text': 'DE LA CRUZ', 'categoryId': 'Vestimenta'}
+    ];
+
+    List<AssignmentRule> rulesToAdd = [];
+
+    for (var item in legacyRules) {
+      String description = item['text']!;
+      String categoryName = item['categoryId']!; // In the list, categoryId is actually the NAME
+
+      // Find Category ID by Name
+      String? matchedId;
+      try {
+        final cat = _categories.firstWhere((c) => c.name.toLowerCase() == categoryName.toLowerCase());
+        matchedId = cat.id;
+      } catch (e) {
+        // Category not found, skip or log
+        // print("Category not found for legacy rule: $categoryName");
+        continue; 
+      }
+      
+      if (matchedId != null) {
+        rulesToAdd.add(AssignmentRule(
+          id: const Uuid().v4(), // Placeholder, batch will overwrite or we use it
+          keyword: description, 
+          categoryId: matchedId
+        ));
+      }
+    }
+
+    if (rulesToAdd.isNotEmpty) {
+      await _firestoreService.batchAddRules(_uid!, rulesToAdd);
+      
+      // Refresh local state immediately (optional if stream is fast)
+      notifyListeners();
+    }
+  }
 }

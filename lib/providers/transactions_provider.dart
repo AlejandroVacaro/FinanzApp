@@ -123,6 +123,8 @@ class TransactionsProvider extends ChangeNotifier {
                        (t.date.isBefore(endDate) || t.date.isAtSameMomentAs(endDate));
       if (!dateMatch) return false;
 
+      if (type == 'TODOS') return true;
+      
       if (type == 'TARJETA') {
         return t.sourceAccount.toLowerCase().contains('visa');
       } else if (type == 'CUENTA_UYU') {

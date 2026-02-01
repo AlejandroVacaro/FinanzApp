@@ -239,6 +239,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                          ),
                        ),
                      ),
+                     const SizedBox(height: 20),
+                     
+                     // LEGACY RESTORE BUTTON
+                     Center(
+                       child: TextButton.icon(
+                         onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text("Restaurar Reglas Legacy"),
+                                content: const Text("¿Estás seguro de importar las reglas antiguas? Esto agregará múltiples reglas nuevas."),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Restaurar")),
+                                ],
+                              )
+                            );
+
+                            if (confirm == true) {
+                               await Provider.of<ConfigProvider>(context, listen: false).restoreLegacyRules();
+                               if (context.mounted) {
+                                 ModernFeedback.showSuccess(context, "Reglas restauradas con éxito.");
+                               }
+                            }
+                         },
+                         icon: const Icon(Icons.history_edu, color: Colors.amber),
+                         label: const Text("RESTAURAR REGLAS LEGACY", style: TextStyle(color: Colors.amber)),
+                       ),
+                     ),
                      const SizedBox(height: 50),
                   ],
                 ),
@@ -651,6 +680,7 @@ void _showDeleteDialog(BuildContext context) {
                 value: selectedType,
                 decoration: const InputDecoration(labelText: "Tipo de Cuenta", border: OutlineInputBorder()),
                 items: const [
+                  DropdownMenuItem(value: 'TODOS', child: Text("Todas las cuentas / Rubros")),
                   DropdownMenuItem(value: 'CUENTA_UYU', child: Text("Caja de Ahorro (\$U)")),
                   DropdownMenuItem(value: 'CUENTA_USD', child: Text("Caja de Ahorro (U\$S)")),
                   DropdownMenuItem(value: 'TARJETA', child: Text("Tarjeta Visa")),

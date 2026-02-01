@@ -89,6 +89,17 @@ class FirestoreService {
       .map((s) => s.docs.map((d) => AssignmentRule.fromMap(d.data(), d.id)).toList());
   }
 
+  Future<void> batchAddRules(String uid, List<AssignmentRule> rules) async {
+    final batch = _firestore.batch();
+    for (var rule in rules) {
+      final docRef = _firestore.collection('users').doc(uid).collection('rules').doc(); // Auto-ID
+      // Correct ID in the object
+      final ruleWithId = rule.copyWith(id: docRef.id);
+      batch.set(docRef, ruleWithId.toMap());
+    }
+    await batch.commit();
+  }
+
   Future<void> saveSettings(String uid, Map<String, dynamic> settings) async {
       await _firestore.collection('users').doc(uid).collection('config').doc('settings').set(settings);
   }
