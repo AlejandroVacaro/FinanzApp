@@ -158,7 +158,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     // 1. Intentar por Headers primero
                     if (dataStartIndex > 0) {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
-                        idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("desc") || h.contains("detalle") || h.contains("referencia"));
+                        idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("desc") || h.contains("detalle"));
                         idxDebit = headers.indexWhere((h) => h.contains("débito") || h.contains("debito") || h.contains("retiro"));
                         idxCredit = headers.indexWhere((h) => h.contains("crédito") || h.contains("credito") || h.contains("depósito") || h.contains("deposito"));
                     }
@@ -430,6 +430,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         children: [
           Expanded(
             child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 24), // Added external margin
               width: double.infinity,
               decoration: const BoxDecoration(
                 color: AppColors.backgroundLight,
@@ -439,6 +440,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ? const Center(child: CircularProgressIndicator()) 
                 : Consumer<TransactionsProvider>(
                     builder: (context, provider, _) {
+                        if (_isLoading || provider.isLoading) {
+                           return const Center(child: CircularProgressIndicator());
+                        }
                         if (provider.transactions.isEmpty) {
                             return const Center(child: Text("No hay movimientos. Importa un archivo CSV."));
                         }

@@ -67,7 +67,7 @@ class FirestoreService {
   
   // Revised method with proper chunking logic
   Future<void> batchAddTransactionsChunked(String uid, List<Transaction> transactions) async {
-      int chunkSize = 450; // Safety margin
+      int chunkSize = 450; 
       for (var i = 0; i < transactions.length; i += chunkSize) {
           final batch = _firestore.batch();
           final end = (i + chunkSize < transactions.length) ? i + chunkSize : transactions.length;
@@ -80,6 +80,21 @@ class FirestoreService {
                 .collection('transactions')
                 .doc(tx.id);
               batch.set(docRef, tx.toJson());
+          }
+          await batch.commit();
+      }
+  }
+
+  Future<void> batchDeleteTransactionsChunked(String uid, List<String> ids) async {
+      int chunkSize = 450; 
+      for (var i = 0; i < ids.length; i += chunkSize) {
+          final batch = _firestore.batch();
+          final end = (i + chunkSize < ids.length) ? i + chunkSize : ids.length;
+          final chunkIds = ids.sublist(i, end);
+          
+          for (var id in chunkIds) {
+              final docRef = _firestore.collection('users').doc(uid).collection('transactions').doc(id);
+              batch.delete(docRef);
           }
           await batch.commit();
       }

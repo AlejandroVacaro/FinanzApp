@@ -110,6 +110,9 @@ class TransactionsProvider extends ChangeNotifier {
     return liabilities;
   }
 
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
   Future<void> deleteTransactionsByRange({
     required DateTime start,
     required DateTime end,
@@ -117,28 +120,37 @@ class TransactionsProvider extends ChangeNotifier {
   }) async {
     if (_uid == null) return;
 
-    final startDate = DateTime(start.year, start.month, start.day, 0, 0, 0);
-    final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    _isLoading = true;
+    notifyListeners();
 
-    final toDelete = _transactions.where((t) {
-      bool dateMatch = (t.date.isAfter(startDate) || t.date.isAtSameMomentAs(startDate)) && 
-                       (t.date.isBefore(endDate) || t.date.isAtSameMomentAs(endDate));
-      if (!dateMatch) return false;
+    try {
+      final startDate = DateTime(start.year, start.month, start.day, 0, 0, 0);
+      final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
-      if (type == 'TODOS') return true;
-      
-      if (type == 'TARJETA') {
-        return t.sourceAccount.toLowerCase().contains('visa');
-      } else if (type == 'CUENTA_UYU') {
-        return t.sourceAccount.toLowerCase().contains('caja') && t.currency == 'UYU';
-      } else if (type == 'CUENTA_USD') {
-        return t.sourceAccount.toLowerCase().contains('caja') && t.currency == 'USD';
+      final toDelete = _transactions.where((t) {
+        bool dateMatch = (t.date.isAfter(startDate) || t.date.isAtSameMomentAs(startDate)) && 
+                        (t.date.isBefore(endDate) || t.date.isAtSameMomentAs(endDate));
+        if (!dateMatch) return false;
+
+        if (type == 'TODOS') return true;
+        
+        if (type == 'TARJETA') {
+          return t.sourceAccount.toLowerCase().contains('visa');
+        } else if (type == 'CUENTA_UYU') {
+          return t.sourceAccount.toLowerCase().contains('caja') && t.currency == 'UYU';
+        } else if (type == 'CUENTA_USD') {
+          return t.sourceAccount.toLowerCase().contains('caja') && t.currency == 'USD';
+        }
+        return false;
+      }).toList();
+
+      if (toDelete.isNotEmpty) {
+         final ids = toDelete.map((e) => e.id).toList();
+         await _firestoreService.batchDeleteTransactionsChunked(_uid!, ids);
       }
-      return false;
-    }).toList();
-
-    for (var tx in toDelete) {
-      await _firestoreService.deleteTransaction(_uid!, tx.id);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
