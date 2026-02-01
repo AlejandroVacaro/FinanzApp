@@ -149,50 +149,84 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 double valDolares = 0.0;
                 
                 if (isBankAccount) {
-                    // Lógica posicional dinámica basada en headers
+                    // --- ESTRATEGIA HÍBRIDA: HEADERS + CONTENIDO ---
                     int idxDesc = -1;
                     int idxDebit = -1;
                     int idxCredit = -1;
-
-                    // Buscar índices en la fila de encabezados (dataStartIndex - 1)
+                    
+                    // 1. Intentar por Headers primero
                     if (dataStartIndex > 0) {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
-                        
-                        // 1. Descripción
                         idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("desc") || h.contains("detalle") || h.contains("referencia"));
-                        
-                        // 2. Débito
                         idxDebit = headers.indexWhere((h) => h.contains("débito") || h.contains("debito") || h.contains("retiro"));
-                        
-                        // 3. Crédito
                         idxCredit = headers.indexWhere((h) => h.contains("crédito") || h.contains("credito") || h.contains("depósito") || h.contains("deposito"));
                     }
 
-                    // Fallback si no encuentra headers (o si dataStartIndex es 0, raro)
-                    if (idxDesc == -1) idxDesc = 3; 
-                    if (idxDebit == -1) idxDebit = 4;
-                    if (idxCredit == -1) idxCredit = 5;
+                    // 2. Si falla, usar HEURÍSTICA DE CONTENIDO (Escáner de Tipos)
+                    if (idxDesc == -1 || (idxDebit == -1 && idxCredit == -1)) {
+                        // Analizar la fila actual (y siguientes si es necesario) para determinar tipos
+                        // Buscamos: 
+                        // - Columna Numérica Negativa/Positiva mezclada o dos columnas numéricas -> Montos
+                        // - Columna de Texto largo -> Descripción
+                        
+                        int bestTxtCol = -1;
+                        int maxTxtLen = 0;
+                        List<int> numericCols = [];
 
-                    // Ajuste de seguridad por si el fallback se pasa
+                        for (int c = 0; c < row.length; c++) {
+                            String val = row[c].toString();
+                            // Chequear si es numero
+                            if (RegExp(r'^-?[0-9]+([.,][0-9]+)?$').hasMatch(val.trim().replaceAll('.', '').replaceAll(',', '.'))) {
+                                numericCols.add(c);
+                            } else if (val.length > 5 && !val.contains(RegExp(r'\d{2}/\d{2}/\d{4}'))) {
+                                // Candidato a Texto (y no es fecha)
+                                if (val.length > maxTxtLen) {
+                                  maxTxtLen = val.length;
+                                  bestTxtCol = c;
+                                }
+                            }
+                        }
+                        
+                        if (idxDesc == -1) idxDesc = bestTxtCol;
+                        
+                        // Asignar columnas numéricas
+                        if (numericCols.isNotEmpty) {
+                           // Si hay 2 columnas numéricas y no tenemos definidos deb/cred
+                           if (numericCols.length >= 2 && idxDebit == -1 && idxCredit == -1) {
+                               idxDebit = numericCols[0]; // Asumimos orden standard: Debito, Credito
+                               idxCredit = numericCols[1];
+                           } else if (numericCols.length == 1 && idxDebit == -1 && idxCredit == -1) {
+                               // Probablemente col única de importe con signo
+                               idxDebit = numericCols[0]; // Usaremos esta como "Amount" genérico
+                           }
+                        }
+                    }
+
+                    // Fallback final
+                    if (idxDesc == -1) idxDesc = 3; 
+                    if (idxDebit == -1) idxDebit = 4; // Si es columna única, debito chequea primero
+                    
+                    // --- EXTRACCIÓN ---
                     if (row.length > idxDesc) description = row[idxDesc].toString();
                     
                     double debito = 0.0;
                     double credito = 0.0;
-
+                    
                     if (idxDebit != -1 && row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
                     if (idxCredit != -1 && row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
-
-                    // Si ambos son 0, probar índices adyacentes a la descripción (heurística común: Desc, Debito, Credito)
-                    if (debito == 0 && credito == 0 && idxDesc != -1) {
-                         if (row.length > idxDesc + 1) debito = _parseMontoRaw(row[idxDesc + 1]);
-                         if (row.length > idxDesc + 2) credito = _parseMontoRaw(row[idxDesc + 2]);
-                    }
-
-                    // Banco: Débitos restan (gastos), Créditos suman (ingresos)
-                    if (debito != 0) {
-                        amount = -debito.abs();
-                    } else if (credito != 0) {
-                        amount = credito.abs();
+                    
+                    // Lógica especial para Columna Única de Importe
+                    if (idxDebit != -1 && idxCredit == -1) {
+                        amount = debito; // Asumimos que viene con signo (-100 o +100)
+                         // Si el banco trae débitos positivos, necesitamos heurística extra, pero standard es con signo si es col única.
+                         // Si BROU: trae Debito y Credito separados positivos.
+                    } else {
+                        // Lógica Debito/Credito Separados (Positivos ambos, columna define signo)
+                        if (debito != 0) {
+                            amount = -debito.abs(); // Forzamos negativo
+                        } else if (credito != 0) {
+                            amount = credito.abs(); // Forzamos positivo
+                        }
                     }
                     
                     currency = fileCurrency;

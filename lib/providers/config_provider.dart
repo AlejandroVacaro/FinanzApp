@@ -71,6 +71,9 @@ class ConfigProvider extends ChangeNotifier {
     _firestoreService.getSettings(uid).then((data) {
       if (data != null) {
         _exchangeRate = (data['rate'] as num?)?.toDouble() ?? 42.5;
+        if (data['lastBackup'] != null) {
+           _lastBackup = DateTime.tryParse(data['lastBackup']);
+        }
         notifyListeners();
       }
     });
@@ -188,19 +191,36 @@ class ConfigProvider extends ChangeNotifier {
      }
   }
 
-  // --- BACKUP & RESTORE STUBS (For Web/Cloud Compatibility) ---
+  // --- BACKUP & RESTORE ---
   
-  DateTime? get lastBackup => DateTime.now(); // Always "synced"
+  DateTime? _lastBackup;
+  DateTime? get lastBackup => _lastBackup;
 
   Future<void> performBackup() async {
-     // No-op: Data is real-time synced to Firestore
-     await Future.delayed(const Duration(milliseconds: 500)); 
+     if (_uid == null) return;
+     try {
+       await _firestoreService.createBackup(_uid!);
+       _lastBackup = DateTime.now();
+       
+       // Save timestamp to settings
+       _firestoreService.saveSettings(_uid!, {
+         'rate': _exchangeRate,
+         'lastBackup': _lastBackup!.toIso8601String()
+       });
+       
+       notifyListeners();
+     } catch (e) {
+       print("Backup failed: $e");
+       rethrow;
+     }
   }
 
   Future<void> performRestore(BuildContext context) async {
-     // No-op in Cloud mode
+     // For now, restoring is complex (overwrite logic). 
+     // We just show a message that backups are saved in Cloud.
+     // If user truly wants to restore, we'd need a UI to pick which backup.
      ScaffoldMessenger.of(context).showSnackBar(
-       const SnackBar(content: Text('Los datos están sincronizados en la nube.'))
+       const SnackBar(content: Text('Tus respaldos están seguros en Google Cloud.'))
      );
   }
 

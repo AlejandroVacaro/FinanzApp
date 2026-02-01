@@ -128,4 +128,35 @@ class FirestoreService {
         .get();
     return doc.data();
   }
+  // --- Backup System ---
+  
+  Future<void> createBackup(String uid) async {
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-'); // Safe for doc ID
+    final backupRef = _firestore.collection('users').doc(uid).collection('backups').doc(timestamp);
+
+    // 1. Fetch all data
+    final txSnapshot = await _firestore.collection('users').doc(uid).collection('transactions').get();
+    final catSnapshot = await _firestore.collection('users').doc(uid).collection('categories').get();
+    final ruleSnapshot = await _firestore.collection('users').doc(uid).collection('rules').get();
+    final budgetDoc = await _firestore.collection('users').doc(uid).collection('data').doc('budget').get();
+    
+    final txList = txSnapshot.docs.map((d) => d.data()..['id'] = d.id).toList();
+    final catList = catSnapshot.docs.map((d) => d.data()..['id'] = d.id).toList();
+    final ruleList = ruleSnapshot.docs.map((d) => d.data()..['id'] = d.id).toList();
+    final budgetData = budgetDoc.data() ?? {};
+
+    // 2. Create Payload
+    final backupData = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'transactions': txList,
+      'categories': catList,
+      'rules': ruleList,
+      'budget': budgetData,
+      'device': 'web',
+      'version': '1.0'
+    };
+
+    // 3. Save
+    await backupRef.set(backupData);
+  }
 }

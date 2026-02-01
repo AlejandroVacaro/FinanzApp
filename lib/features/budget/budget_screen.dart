@@ -35,14 +35,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
     _months = [];
     
     final now = DateTime.now();
-    // Start from current month
-    DateTime current = DateTime(now.year, now.month);
-    // End 12 months from now (Current + 11 = 12 months total, or Current + 12? User said "future budget 12 months", usually implies 1 year lookahead from today)
-    // Let's do Current + 11 months to show a full year view including this month.
-    // Or if they strictly mean "Future", maybe Current + 12.
-    // I will do Current + 11 (12 columns total). Use 12 to be safe if they count "Current" as "Present". 
-    // Actually "Presupuesto a futuro" -> Future budget.
-    // I'll set it to Current + 12 months.
+    // Start from Jan 1st of previous year to show history
+    DateTime current = DateTime(now.year - 1, 1);
+    
+    // End 12 months from NOW
     final endDate = DateTime(now.year, now.month + 12);
     
     while (current.isBefore(endDate) || current.isAtSameMomentAs(endDate)) {
@@ -381,16 +377,23 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
                   if (isPast) {
                      final diff = realVal - amount;
-                     final isFavorable = diff >= 0; // Depends on income/expense type, but keeping simple
+                     // Logic:
+                     // Income (Positive): Real > Budget (Positive Diff) = Good (Green)
+                     // Expense (Negative): Real > Budget (Positive Diff -> -800 > -1000) = Good (Green)
+                     // So simply: Diff > 0 is Good. Diff < 0 is Bad.
+                     
+                     final color = diff > 0 ? const Color(0xFF00C853) : (diff < 0 ? const Color(0xFFFF5252) : Colors.black);
                      
                      return Tooltip(
                         richMessage: TextSpan(
                           children: [
-                            TextSpan(text: "Estimado: ${_formatCurrency(amount)}\n"),
-                            TextSpan(text: "Diferencia: ${_formatCurrency(diff)}", style: TextStyle(color: diff == 0 ? Colors.white : (isFavorable ? Colors.greenAccent : Colors.redAccent))),
+                            TextSpan(text: "Presupuestado: ${_formatCurrency(amount)}\n", style: const TextStyle(fontWeight: FontWeight.bold)),
+                            TextSpan(text: "Diferencia: ${_formatCurrency(diff)}", style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                           ]
                         ),
-                        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]),
+                        textStyle: const TextStyle(color: Colors.black87), // Tooltip default text color check
                         child: cell,
                      );
                   }

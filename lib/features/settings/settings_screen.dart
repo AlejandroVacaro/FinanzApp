@@ -53,13 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 // --- SECCIÓN ELIMINADA: COTIZACIÓN ---
                     // Text("Ajustes Generales", style: ...),
 
-                     // --- SECCIÓN 2: DATOS MAESTROS ---
-                    Text("Asignación de rubros", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
-                    const Divider(color: Colors.white10),
-                    const SizedBox(height: 24),
-// ... (omitting intermediate lines for brevity in instruction, logic below applies to separate chunks if needed, but here I use multi replace or single replace carefully. Since they are far apart, I should use multi_replace. Wait, I am using replace_file_content. I should use MultiReplace for safety as they are far apart.)
-// Actually, I will use MultiReplaceFileContent.
-
+                    // --- SECCIÓN 2: DATOS MAESTROS ---
                     Text("Asignación de rubros", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
                     const Divider(color: Colors.white10),
                     const SizedBox(height: 24),
@@ -90,55 +84,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 50),
 
-                    const SizedBox(height: 50),
-
-                     // --- SECCIÓN 3: HERRAMIENTAS CRUDAS (GRID) ---
-                     Text("Herramientas del Sistema", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
+                     // --- SECCIÓN 3: AJUSTES AVANZADOS (GRID) ---
+                     Text("Ajustes Avanzados", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
                      const Divider(color: Colors.white10),
                      const SizedBox(height: 24),
 
-                     ConstrainedBox(
-                       constraints: const BoxConstraints(maxWidth: 800),
-                       child: GridView.count(
-                         shrinkWrap: true,
-                         physics: const NeverScrollableScrollPhysics(),
-                         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1, // Responsive
-                         crossAxisSpacing: 20,
-                         mainAxisSpacing: 20,
-                         childAspectRatio: 1.1, // Square-ish
-                         children: [
-                           // BACKUP
-                           _buildOptionCard(
-                             context,
-                             title: "Crear Respaldo",
-                             desc: "Guardar copia local",
-                             icon: Icons.save_alt,
-                             color: AppColors.primaryPurple,
-                             onTap: () async {
-                                await Provider.of<ConfigProvider>(context, listen: false).performBackup();
-                                if (context.mounted) ModernFeedback.showSuccess(context, "Respaldo creado con éxito.");
+                     Center(
+                       child: ConstrainedBox(
+                         constraints: const BoxConstraints(maxWidth: 800),
+                         child: Consumer<ConfigProvider>(
+                           builder: (context, config, _) {
+                             String lastBackupStr = "No hay respaldos";
+                             if (config.lastBackup != null) {
+                               lastBackupStr = DateFormat('dd/MM/yyyy HH:mm').format(config.lastBackup!);
                              }
-                           ),
-                           // RESTORE
-                           _buildOptionCard(
-                             context,
-                             title: "Restaurar",
-                             desc: "Recuperar datos",
-                             icon: Icons.restore,
-                             color: Colors.orange,
-                             onTap: () => _showRestoreDialog(context),
-                           ),
-                           // DELETE
-                           _buildOptionCard(
-                             context,
-                             title: "Borrado Masivo",
-                             desc: "Zona de Peligro",
-                             icon: Icons.delete_forever,
-                             color: AppColors.accentPink,
-                             isDanger: true,
-                             onTap: () => _showDeleteDialog(context),
-                           ),
-                         ],
+                             
+                             return GridView.count(
+                               shrinkWrap: true,
+                               physics: const NeverScrollableScrollPhysics(),
+                               crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1, // Responsive
+                               crossAxisSpacing: 20,
+                               mainAxisSpacing: 20,
+                               childAspectRatio: 1.1, // Square-ish
+                               children: [
+                                 // BACKUP
+                                 _buildOptionCard(
+                                   context,
+                                   title: "Crear Respaldo",
+                                   desc: "Último: $lastBackupStr",
+                                   icon: Icons.save_alt,
+                                   color: AppColors.primaryPurple,
+                                   onTap: () async {
+                                      await Provider.of<ConfigProvider>(context, listen: false).performBackup();
+                                      if (context.mounted) ModernFeedback.showSuccess(context, "Respaldo creado con éxito.");
+                                   }
+                                 ),
+                                 // RESTORE
+                                 _buildOptionCard(
+                                   context,
+                                   title: "Restaurar",
+                                   desc: "Recuperar datos", // Dialog will show detail
+                                   icon: Icons.restore,
+                                   color: Colors.orange,
+                                   onTap: () => _showRestoreDialog(context),
+                                 ),
+                                 // DELETE
+                                 _buildOptionCard(
+                                   context,
+                                   title: "Borrado Masivo",
+                                   desc: "Zona de Peligro",
+                                   icon: Icons.delete_forever,
+                                   color: AppColors.accentPink,
+                                   isDanger: true,
+                                   onTap: () => _showDeleteDialog(context),
+                                 ),
+                               ],
+                             );
+                           }
+                         ),
                        ),
                      ),
                      
@@ -712,7 +715,12 @@ void _showDeleteDialog(BuildContext context) {
 // --- DIALOGO DE RESTAURACION ---
 void _showRestoreDialog(BuildContext context) {
   final controller = TextEditingController();
-  
+  final config = Provider.of<ConfigProvider>(context, listen: false); // Access provider
+  final lastBackup = config.lastBackup;
+  final lastBackupStr = lastBackup != null 
+      ? DateFormat('dd/MM/yyyy HH:mm:ss').format(lastBackup)
+      : "No disponible";
+
   showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -730,6 +738,22 @@ void _showRestoreDialog(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+               Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3))
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_done, color: Colors.blue, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text("Último respaldo en nube:\n$lastBackupStr", style: const TextStyle(fontWeight: FontWeight.bold))),
+                  ],
+                ),
+              ),
               const Text("Se reemplazarán todos los datos actuales con la última copia de seguridad guardada."),
               const SizedBox(height: 10),
               const Text("Esta acción no se puede deshacer.", style: TextStyle(fontWeight: FontWeight.bold)),
