@@ -226,10 +226,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (amount == 0 && valOriginal == 0) continue;
 
                 // === LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ===
+                // === LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ===
                 String? catId = config.getCategoryIdForDescription(description);
-                String finalCategory = "General";
+                String finalCategory = "Categoría no asignada";
                 if (catId != null) { 
-                   finalCategory = config.getCategoryById(catId)?.name ?? "General"; 
+                   finalCategory = config.getCategoryById(catId)?.name ?? "Categoría no asignada"; 
                 }
 
                 newTransactions.add(Transaction(

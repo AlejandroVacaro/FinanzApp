@@ -2,52 +2,70 @@ import 'package:flutter/material.dart';
 
 class ModernFeedback {
   static void showSuccess(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.bold))),
-          ],
-        ),
-        backgroundColor: const Color(0xFF00C853), // Green
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(20),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    _showOverlay(context, message, Icons.check_circle_outline, const Color(0xFF00C853));
   }
 
   static void showError(BuildContext context, String title, String msg) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      pageBuilder: (ctx, a1, a2) => Container(),
-      transitionBuilder: (ctx, a1, a2, child) {
-        return ScaleTransition(
-          scale: CurvedAnimation(parent: a1, curve: Curves.elasticOut),
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-            title: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red),
-                const SizedBox(width: 10),
-                Text(title, style: const TextStyle(color: Colors.red)),
-              ],
+    _showOverlay(context, "$title: $msg", Icons.error_outline, Colors.red);
+  }
+
+  static void _showOverlay(BuildContext context, String message, IconData icon, Color color) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 300),
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, -20 * (1 - value)),
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: Colors.white),
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 300),
+                    child: Text(
+                      message, 
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            content: Text(msg),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Entendido", style: TextStyle(fontWeight: FontWeight.bold)),
-              )
-            ],
           ),
-        );
-      },
+        ),
+      ),
     );
+
+    overlay.insert(entry);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      entry.remove();
+    });
   }
 }

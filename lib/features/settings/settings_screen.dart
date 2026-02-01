@@ -136,138 +136,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 50),
 
-                     // --- SECCIÓN 3: COPIAS DE SEGURIDAD ---
-                     const Text("Copias de Seguridad", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textWhite)),
+                    const SizedBox(height: 50),
+
+                     // --- SECCIÓN 3: HERRAMIENTAS CRUDAS (GRID) ---
+                     Text("Herramientas del Sistema", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textWhite)),
                      const Divider(color: Colors.white10),
                      const SizedBox(height: 24),
-                     
-                     Container(
-                       padding: const EdgeInsets.all(24),
-                       decoration: BoxDecoration(
-                         color: AppColors.backgroundDark,
-                         borderRadius: BorderRadius.circular(16),
-                         border: Border.all(color: Colors.white10),
-                       ),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
+
+                     ConstrainedBox(
+                       constraints: const BoxConstraints(maxWidth: 800),
+                       child: GridView.count(
+                         shrinkWrap: true,
+                         physics: const NeverScrollableScrollPhysics(),
+                         crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1, // Responsive
+                         crossAxisSpacing: 20,
+                         mainAxisSpacing: 20,
+                         childAspectRatio: 1.1, // Square-ish
                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.security, size: 28, color: AppColors.textGrey),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Respaldo Local", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                                    Consumer<ConfigProvider>(
-                                      builder: (ctx, provider, _) => Text(
-                                        provider.lastBackup != null 
-                                          ? "Último respaldo: ${DateFormat('dd/MM/yyyy HH:mm').format(provider.lastBackup!)}"
-                                          : "Último respaldo: Nunca",
-                                        style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    icon: const Icon(Icons.save_alt),
-                                    label: const Text("Crear Respaldo"),
-                                    style: ElevatedButton.styleFrom(
-                                       backgroundColor: AppColors.primaryPurple,
-                                       foregroundColor: Colors.white,
-                                       padding: const EdgeInsets.symmetric(vertical: 16),
-                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    onPressed: () async {
-                                      await Provider.of<ConfigProvider>(context, listen: false).performBackup();
-                                      if (context.mounted) ModernFeedback.showSuccess(context, "Respaldo creado con éxito.");
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    icon: const Icon(Icons.restore),
-                                    label: const Text("Restaurar"),
-                                    style: OutlinedButton.styleFrom(
-                                       foregroundColor: Colors.orange,
-                                       side: const BorderSide(color: Colors.orange),
-                                       padding: const EdgeInsets.symmetric(vertical: 16),
-                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    onPressed: () => _showRestoreDialog(context),
-                                  ),
-                                ),
-                              ],
-                            ),
+                           // BACKUP
+                           _buildOptionCard(
+                             context,
+                             title: "Crear Respaldo",
+                             desc: "Guardar copia local",
+                             icon: Icons.save_alt,
+                             color: AppColors.primaryPurple,
+                             onTap: () async {
+                                await Provider.of<ConfigProvider>(context, listen: false).performBackup();
+                                if (context.mounted) ModernFeedback.showSuccess(context, "Respaldo creado con éxito.");
+                             }
+                           ),
+                           // RESTORE
+                           _buildOptionCard(
+                             context,
+                             title: "Restaurar",
+                             desc: "Recuperar datos",
+                             icon: Icons.restore,
+                             color: Colors.orange,
+                             onTap: () => _showRestoreDialog(context),
+                           ),
+                           // DELETE
+                           _buildOptionCard(
+                             context,
+                             title: "Borrado Masivo",
+                             desc: "Zona de Peligro",
+                             icon: Icons.delete_forever,
+                             color: AppColors.accentPink,
+                             isDanger: true,
+                             onTap: () => _showDeleteDialog(context),
+                           ),
                          ],
                        ),
                      ),
-
-                    const SizedBox(height: 50),
-
-                     // --- SECCIÓN 4: ZONA DE PELIGRO ---
-                     const Text("Zona de Peligro", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.accentPink)),
-                     const Divider(color: AppColors.accentPink),
-                     const SizedBox(height: 24),
                      
-                     Container(
-                       decoration: BoxDecoration(
-                         color: AppColors.accentPink.withOpacity(0.05),
-                         borderRadius: BorderRadius.circular(16),
-                         border: Border.all(color: AppColors.accentPink.withOpacity(0.2)),
-                       ),
-                       child: ListTile(
-                         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                         leading: Container(
-                           padding: const EdgeInsets.all(12),
-                           decoration: BoxDecoration(color: AppColors.accentPink.withOpacity(0.1), shape: BoxShape.circle),
-                           child: const Icon(Icons.delete_forever, color: AppColors.accentPink),
-                         ),
-                         title: const Text("Borrado Masivo de Datos", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentPink)),
-                         subtitle: Text("Eliminar transacciones por rango de fecha y cuenta.", style: TextStyle(color: Colors.grey[500])),
-                         trailing: ElevatedButton(
-                           style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentPink, foregroundColor: Colors.white),
-                           onPressed: () => _showDeleteDialog(context),
-                           child: const Text("Abrir Herramienta"),
-                         ),
-                       ),
-                     ),
-                     const SizedBox(height: 20),
-                     
-                     // LEGACY RESTORE BUTTON
-                     Center(
-                       child: TextButton.icon(
-                         onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text("Restaurar Reglas Legacy"),
-                                content: const Text("¿Estás seguro de importar las reglas antiguas? Esto agregará múltiples reglas nuevas."),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancelar")),
-                                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Restaurar")),
-                                ],
-                              )
-                            );
-
-                            if (confirm == true) {
-                               await Provider.of<ConfigProvider>(context, listen: false).restoreLegacyRules();
-                               if (context.mounted) {
-                                 ModernFeedback.showSuccess(context, "Reglas restauradas con éxito.");
-                               }
-                            }
-                         },
-                         icon: const Icon(Icons.history_edu, color: Colors.amber),
-                         label: const Text("RESTAURAR REGLAS LEGACY", style: TextStyle(color: Colors.amber)),
-                       ),
-                     ),
+                     // LEGACY BUTTON REMOVED
                      const SizedBox(height: 50),
                   ],
                 ),
@@ -276,6 +197,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildOptionCard(BuildContext context, {required String title, required String desc, required IconData icon, required Color color, required VoidCallback onTap, bool isDanger = false}) {
+    return _HoverCard(
+      title: title,
+      subtitle: desc,
+      icon: icon,
+      color: color,
+      onTap: onTap,
     );
   }
 
@@ -293,11 +224,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _HoverCard extends StatefulWidget {
   final String title;
+  final String? subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  const _HoverCard({required this.title, required this.icon, required this.color, required this.onTap});
+  const _HoverCard({required this.title, this.subtitle, required this.icon, required this.color, required this.onTap});
 
   @override
   State<_HoverCard> createState() => _HoverCardState();
@@ -341,7 +273,7 @@ class _HoverCardState extends State<_HoverCard> {
               const SizedBox(height: 16),
               Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 8),
-              const Text("Gestionar datos", style: TextStyle(color: Colors.grey, fontSize: 14)),
+              Text(widget.subtitle ?? "Gestionar datos", style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.2), textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -562,7 +494,11 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
                     subtitle: Row(
                       children: [
                         const Text("Asigna a: "),
-                        Chip(label: Text(cat?.name ?? "N/A", style: const TextStyle(fontSize: 10)), backgroundColor: Colors.grey[200], visualDensity: VisualDensity.compact),
+                        Chip(
+                          label: Text(cat?.name ?? "N/A", style: const TextStyle(fontSize: 10, color: Colors.black87)), 
+                          backgroundColor: Colors.grey[200], 
+                          visualDensity: VisualDensity.compact
+                        ),
                       ],
                     ),
                     trailing: Row(
@@ -659,14 +595,18 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
 
 // --- DIALOGO DE BORRADO ---
 void _showDeleteDialog(BuildContext context) {
-  DateTimeRange? selectedRange;
+  DateTime? startDate;
+  DateTime? endDate;
   String selectedType = 'CUENTA_UYU';
   final controller = TextEditingController();
-  
+  final startController = TextEditingController();
+  final endController = TextEditingController();
+
   showDialog(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Borrado Masivo", style: TextStyle(color: Colors.red)),
         content: SizedBox(
           width: 400,
@@ -674,7 +614,7 @@ void _showDeleteDialog(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Selecciona qué datos quieres borrar permanentemente."),
+              const Text("Selecciona qué datos quieres borrar."),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 value: selectedType,
@@ -688,30 +628,69 @@ void _showDeleteDialog(BuildContext context) {
                 onChanged: (val) => setState(() => selectedType = val!),
               ),
               const SizedBox(height: 16),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDateRangePicker(
-                    context: context, 
-                    firstDate: DateTime(2020), 
-                    lastDate: DateTime.now(),
-                    saveText: "SELECCIONAR",
-                  );
-                  if (picked != null) setState(() => selectedRange = picked);
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                     labelText: "Rango de Fechas",
-                     border: OutlineInputBorder(),
-                     suffixIcon: Icon(Icons.calendar_month),
+              
+              const Text("Rango de Fechas (dd/mm/aaaa)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: startController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: "Fecha Inicio", 
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.calendar_today, size: 16),
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                          locale: const Locale('es', 'ES'),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            startDate = picked;
+                            startController.text = DateFormat('dd/MM/yyyy').format(picked);
+                          });
+                        }
+                      },
+                    ),
                   ),
-                  child: Text(selectedRange == null 
-                    ? "Seleccionar..." 
-                    : "${DateFormat('dd/MM/yy').format(selectedRange!.start)} - ${DateFormat('dd/MM/yy').format(selectedRange!.end)}"
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: endController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: "Fecha Fin", 
+                        border: OutlineInputBorder(),
+                         suffixIcon: Icon(Icons.calendar_today, size: 16),
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endDate ?? startDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                          locale: const Locale('es', 'ES'),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                             endDate = picked;
+                             endController.text = DateFormat('dd/MM/yyyy').format(picked);
+                          });
+                        }
+                      },
+                    ),
                   ),
-                ),
+                ],
               ),
+
               const Divider(height: 30, thickness: 1),
-              const Text("Seguridad: Escribe 'eliminar' para confirmar.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const Text("Escribe 'eliminar' para confirmar.", style: TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 8),
               TextField(
                 controller: controller,
@@ -725,19 +704,24 @@ void _showDeleteDialog(BuildContext context) {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: controller.text.toLowerCase() == 'eliminar' && selectedRange != null
+            onPressed: controller.text.toLowerCase() == 'eliminar' && startDate != null && endDate != null
                 ? () {
-                    // Obtener Provider del contexto PADRE (SettingsScreen), no del dialogo
+                    // Validate Dates
+                    if (startDate!.isAfter(endDate!)) {
+                       ModernFeedback.showError(context, "Error", "La fecha de inicio debe ser anterior a la final.");
+                       return;
+                    }
+
                     Provider.of<TransactionsProvider>(context, listen: false).deleteTransactionsByRange(
-                      start: selectedRange!.start,
-                      end: selectedRange!.end,
+                      start: startDate!,
+                      end: endDate!,
                       type: selectedType
                     );
                     Navigator.pop(ctx);
                     ModernFeedback.showSuccess(context, "Datos eliminados correctamente.");
                   }
                 : null,
-            child: const Text("ELIMINAR DEFINITIVAMENTE"),
+            child: const Text("ELIMINAR"),
           ),
         ],
       ),

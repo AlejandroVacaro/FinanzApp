@@ -117,9 +117,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: const TextStyle(color: Color(0xFF2C3E50)),
                       decoration: InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        labelStyle: const TextStyle(color: Color(0xFF546E7A)),
+                        prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF546E7A)),
+                        filled: true,
+                        fillColor: const Color(0xFFF0F2F5),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
@@ -130,9 +142,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: const TextStyle(color: Color(0xFF2C3E50)),
                       decoration: InputDecoration(
                         labelText: 'Contraseña',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        labelStyle: const TextStyle(color: Color(0xFF546E7A)),
+                        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF546E7A)),
+                        filled: true,
+                        fillColor: const Color(0xFFF0F2F5),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                         enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
                         ),
                       ),
                       obscureText: true,
