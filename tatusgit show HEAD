@@ -1,0 +1,29 @@
+[33mcommit 22c7f1017cf2c365e8a3abaa5ae0575e38dde4df[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Alejandro Vacaro <avacaro@outlook.com>
+Date:   Sun Feb 1 03:57:54 2026 -0300
+
+    a
+
+ git | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+
+[33mcommit b520b8ab96ed11fcfa1aa40b262844f9ece606ed[m
+Author: Alejandro Vacaro <avacaro@outlook.com>
+Date:   Sun Feb 1 03:53:35 2026 -0300
+
+    a
+
+ lib/features/settings/settings_screen.dart |  30 [32m++++++++[m
+ lib/providers/config_provider.dart         | 110 [32m+++++++++++++++++++++++++++++[m
+ lib/providers/transactions_provider.dart   |   2 [32m+[m
+ lib/services/firestore_service.dart        |  11 [32m+++[m
+ 4 files changed, 153 insertions(+)
+
+[33mcommit 711785ed28fd8c669e12374f70686aae612373a2[m
+Author: Alejandro Vacaro <avacaro@outlook.com>
+Date:   Sun Feb 1 03:47:27 2026 -0300
+
+    a
+
+ lib/features/dashboard/dashboard_screen.dart | 7 [32m+[m[31m------[m
+ 1 file changed, 1 insertion(+), 6 deletions(-)
