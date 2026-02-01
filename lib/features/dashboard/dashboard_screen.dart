@@ -50,8 +50,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       // Calculate Card Totals
-      double income = filteredTxs.where((t) => t.amount > 0).fold(0, (sum, t) => sum + t.amount);
-      double expense = filteredTxs.where((t) => t.amount < 0).fold(0, (sum, t) => sum + t.amount);
+      double income = filteredTxs.where((t) => _getAmountInPesos(t) > 0).fold(0, (sum, t) => sum + _getAmountInPesos(t));
+      double expense = filteredTxs.where((t) => _getAmountInPesos(t) < 0).fold(0, (sum, t) => sum + _getAmountInPesos(t));
       double result = income + expense;
 
       return Scaffold(
@@ -239,6 +239,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- HELPERS ---
+  
+  double _getAmountInPesos(Transaction t) {
+      // Logic: If amountUYU is present (from conversion), use it.
+      // Otherwise fallback to t.amount (assuming it's already UYU or we have no rate).
+      if (t.amountUYU != 0) return t.amountUYU;
+      // If it's a dollar transaction but amountUYU is 0 (e.g. Manual Entry or Bank USD with no conversion data),
+      // we currently fall back to raw amount. Ideally we'd have a rate.
+      return t.amount;
+  }
 
   Widget _buildToggle(String label, Color color, bool value, Function(bool) onChanged) {
       return Padding(
@@ -310,13 +319,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
              data[key] = { "income": 0.0, "expense": 0.0, "savings": 0.0, "result": 0.0, "category": 0.0 };
           }
           
-          if (tx.amount > 0) data[key]!["income"] = (data[key]!["income"] ?? 0) + tx.amount;
-          else data[key]!["expense"] = (data[key]!["expense"] ?? 0) + tx.amount;
+          final amount = _getAmountInPesos(tx);
+
+          if (amount > 0) data[key]!["income"] = (data[key]!["income"] ?? 0) + amount;
+          else data[key]!["expense"] = (data[key]!["expense"] ?? 0) + amount;
           
-          data[key]!["result"] = (data[key]!["result"] ?? 0) + tx.amount;
+          data[key]!["result"] = (data[key]!["result"] ?? 0) + amount;
 
           if (selectedCategoryForChart != null && tx.category == selectedCategoryForChart) {
-               data[key]!["category"] = (data[key]!["category"] ?? 0) + tx.amount;
+               data[key]!["category"] = (data[key]!["category"] ?? 0) + amount;
           }
       }
       return Map.fromEntries(data.entries.toList()..sort((a,b) => a.key.compareTo(b.key)));
@@ -442,7 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final cat = config.categories.firstWhere((c) => c.name == tx.category, orElse: () => const Category(id: '?', name: 'Unknown', type: CategoryType.expense, icon: 'help_outline', color: '#9E9E9E'));
           
           if (cat.type == type) {
-              double val = tx.amount.abs();
+              double val = _getAmountInPesos(tx).abs();
               catSums[tx.category] = (catSums[tx.category] ?? 0) + val;
               totalSum += val;
           }

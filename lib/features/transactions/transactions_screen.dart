@@ -27,6 +27,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   // --- LÓGICA DE IMPORTACIÓN ---
 
+   // --- LÓGIC DE IMPORTACIÓN MEJORADA ---
+
   Future<void> _pickCSV() async {
     final config = Provider.of<ConfigProvider>(context, listen: false);
 
@@ -63,85 +65,165 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             if (rows.isEmpty) continue;
 
             // 3. Detectar Formato
-            int headerIndex = -1;
             bool isCreditCard = false;
+            bool isBankAccount = false;
             String sourceAccount = "Desconocido";
+            String fileCurrency = "UYU"; // Default
 
-            for (int i = 0; i < rows.length && i < 50; i++) {
+            // Análisis de primeras líneas para detectar tipo
+            for (int i = 0; i < rows.length && i < 20; i++) {
               String rowStr = rows[i].join(" ").toLowerCase();
               
-              if (rowStr.contains("pesos") && (rowStr.contains("dólares") || rowStr.contains("dolares"))) {
-                headerIndex = i;
+              if (rowStr.contains("visa soy santander") || rowStr.contains("tarjeta de crédito") || (rowStr.contains("importe original") && rowStr.contains("dólares"))) {
                 isCreditCard = true;
                 sourceAccount = "Visa Platinum";
                 break;
               }
-              if (rowStr.contains("referencia") && rowStr.contains("concepto")) {
-                headerIndex = i;
-                isCreditCard = false;
-                sourceAccount = "Caja Ahorro \$";
+              if (rowStr.contains("ca personal") || (rowStr.contains("referencia") && rowStr.contains("concepto") && rowStr.contains("saldos"))) {
+                isBankAccount = true;
+                if (rowStr.contains("moneda usd")) fileCurrency = "USD";
+                if (rowStr.contains("moneda uyu")) fileCurrency = "UYU";
+                sourceAccount = "Caja Ahorro $fileCurrency";
                 break;
               }
             }
 
-            if (headerIndex == -1) {
-              debugPrint("Formato no reconocido para archivo: ${file.name}");
-              errors++;
-              continue;
+            if (!isCreditCard && !isBankAccount) {
+                 debugPrint("Formato no reconocido para archivo: ${file.name}");
+                 errors++;
+                 continue;
             }
 
             // 4. Parsear Datos
             List<Transaction> newTransactions = [];
-            List<dynamic> headers = rows[headerIndex].map((e) => e.toString().toLowerCase()).toList();
+            
+            // Indices para CAJA DE AHORRO
+            // "los valores que siguen enseguida a la derecha de la descripción son los débitos, los que siguen son los créditos"
+            int dataStartIndex = -1;
 
-            int idxDesc = -1;
-            int idxDebit = -1;
-            int idxCredit = -1;
-            int idxPesos = -1;
-            int idxDolares = -1;
-
-            if (isCreditCard) {
-                idxDesc = _findIndex(headers, ["descripción", "descripcion"]);
-                idxPesos = _findIndex(headers, ["pesos"]);
-                idxDolares = _findIndex(headers, ["dólares", "dolares"]);
-            } else {
-                idxDesc = _findIndex(headers, ["concepto"]);
-                idxDebit = _findIndex(headers, ["débito", "debito"]);
-                idxCredit = _findIndex(headers, ["crédito", "credito"]);
+            if (isBankAccount) {
+                // Buscar encabezados
+                for (int i = 0; i < rows.length; i++) {
+                    var row = rows[i].map((e) => e.toString().toLowerCase()).toList();
+                    if (row.contains("fecha") && row.contains("referencia")) {
+                        dataStartIndex = i + 1;
+                        break;
+                    }
+                }
+            } else if (isCreditCard) {
+                // Buscar encabezados de TC
+                for (int i = 0; i < rows.length; i++) {
+                     var row = rows[i].map((e) => e.toString().toLowerCase()).toList();
+                     if (row.contains("fecha") && row.contains("número de tarjeta")) {
+                         dataStartIndex = i + 1;
+                         break;
+                     }
+                }
             }
 
-            for (int i = headerIndex + 1; i < rows.length; i++) {
+            if (dataStartIndex == -1) {
+                 errors++; 
+                 continue;
+            }
+
+            for (int i = dataStartIndex; i < rows.length; i++) {
               var row = rows[i];
+              // Validaciones básicas
               if (row.length < 3) continue;
 
               try {
+                // FECHA
                 String dateStr = row[0].toString();
                 DateTime? date;
                 try {
                    date = DateFormat("dd/MM/yyyy").parse(dateStr);
                 } catch (_) { continue; }
 
-                String description = idxDesc != -1 && idxDesc < row.length ? row[idxDesc].toString() : "Sin descripción";
+                String description = "";
                 double amount = 0.0;
                 String currency = "UYU";
-
-                if (isCreditCard) {
-                    double p = _parseMonto(row, idxPesos);
-                    double d = _parseMonto(row, idxDolares);
+                
+                // Mapeo detallado de montos
+                double valOriginal = 0.0;
+                double valPesos = 0.0;
+                double valDolares = 0.0;
+                
+                if (isBankAccount) {
+                    // Lógica posicional relativa:
+                    // Encontrar índice de Descripción
+                    // Si no hallamos descripción clara por header, asumimos posiciones fijas:
+                    // Screenshot: Fecha(0), Ref(1), Concepto(2), Desc(3), Debito(4), Credito(5), Saldos(6)...
+                    // User says: "valores que siguen enseguida a la derecha de la descripción son los débitos"
                     
-                    if (d != 0) {
-                        amount = d; currency = "USD";
-                    } else {
-                        amount = p; currency = "UYU";
+                    int idxDesc = 3; // Default
+                    // Ajuste dinámico si la fila es corta o larga? Asumamos estructura fija basada en la descripción del usuario.
+                    
+                    if (row.length > idxDesc) description = row[idxDesc].toString();
+                    
+                    int idxDebit = idxDesc + 1;
+                    int idxCredit = idxDesc + 2;
+
+                    double debito = 0.0;
+                    double credito = 0.0;
+
+                    if (row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
+                    if (row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
+
+                    // Banco: Débitos restan (gastos), Créditos suman (ingresos)
+                    // FinanzApp: Gastos negativos, Ingresos positivos.
+                    // Si viene "Debito: 100", es un gasto -> -100
+                    // Si viene "Credito: 100", es ingreso -> +100
+                    
+                    if (debito != 0) {
+                        amount = -debito.abs();
+                    } else if (credito != 0) {
+                        amount = credito.abs();
                     }
-                    amount = amount * -1; // Invert logic for Visa
-                } else {
-                    double deb = _parseMonto(row, idxDebit);
-                    double cred = _parseMonto(row, idxCredit);
-                    amount = deb + cred;
+                    
+                    currency = fileCurrency;
+                    
+                    if (currency == "UYU") {
+                        valPesos = amount;
+                        valDolares = 0; // Podríamos convertir si tuviéramos tasa, pero por ahora 0
+                    } else {
+                        valDolares = amount;
+                        valPesos = 0;
+                    }
+                    valOriginal = amount;
+
+                } else if (isCreditCard) {
+                    // TC tiene columnas específicas
+                    // Headers: Fecha, Nro Tarjeta, Autorización, Descripción, Importe Original, Pesos, Dólares
+                    int idxDesc = 3;
+                    int idxOrig = 4;
+                    int idxPesos = 5;
+                    int idxDolar = 6;
+                    
+                    if (row.length > idxDesc) description = row[idxDesc].toString();
+                    
+                    if (row.length > idxOrig) valOriginal = _parseMontoRaw(row[idxOrig]);
+                    if (row.length > idxPesos) valPesos = _parseMontoRaw(row[idxPesos]);
+                    if (row.length > idxDolar) valDolares = _parseMontoRaw(row[idxDolar]);
+
+                    // Lógica de Negación: En el resumen, compras son positivas. Queremos gastos negativos.
+                    valOriginal = valOriginal * -1;
+                    valPesos = valPesos * -1;
+                    valDolares = valDolares * -1;
+                    
+                    // Lógica de visualización principal
+                    if (valDolares.abs() > 0) {
+                        amount = valDolares;
+                        currency = "USD";
+                    } else if (valPesos.abs() > 0) {
+                        amount = valPesos;
+                        currency = "UYU";
+                    } else {
+                         // Fallback si ambos son 0 (ej: items informativos)
+                         continue;
+                    }
                 }
 
-                if (amount == 0) continue;
+                if (amount == 0 && valOriginal == 0) continue;
 
                 // === LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ===
                 String? catId = config.getCategoryIdForDescription(description);
@@ -159,6 +241,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     sourceAccount: sourceAccount,
                     accountNumber: "N/A",
                     balance: 0.0,
+                    originalAmount: valOriginal,
+                    amountUYU: valPesos,
+                    amountUSD: valDolares,
                 ));
 
               } catch (e) {
@@ -192,29 +277,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
-  // Helpers
-  int _findIndex(List<dynamic> headers, List<String> keys) {
-      for (int i = 0; i < headers.length; i++) {
-          for (var k in keys) {
-              if (headers[i].toString().contains(k)) return i;
-          }
-      }
-      return -1;
-  }
-
-  double _parseMonto(List<dynamic> row, int index) {
-      if (index == -1 || index >= row.length) return 0.0;
-      String val = row[index].toString().trim();
+  // Helper Simplificado
+  double _parseMontoRaw(dynamic value) {
+      if (value == null) return 0.0;
+      String val = value.toString().trim();
       if (val.isEmpty) return 0.0;
       
-      // Smart Parsing:
-      if (val.contains('.') && val.contains(',')) {
-        if (val.lastIndexOf(',') > val.lastIndexOf('.')) {
-             val = val.replaceAll('.', '').replaceAll(',', '.');
-        } else {
-             val = val.replaceAll(',', '');
-        }
-      } else if (val.contains(',')) {
+      // Manejo de formatos numéricos (1.000,00 vs 1000.00)
+      // Asumimos formato español/latino: 1.234,56
+      // Si hay comas, reemplazar puntos (miles) por nada y comas por puntos (decimal)
+      if (val.contains(',')) {
           val = val.replaceAll('.', '').replaceAll(',', '.');
       }
       return double.tryParse(val) ?? 0.0;
@@ -491,8 +563,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       // Amount
                                       Expanded(
                                         flex: 2, 
-                                        child: Container(
-                                            alignment: Alignment.centerRight,
+                                        child: Tooltip(
+                                            message: tx.currency == 'USD' 
+                                                ? "En Pesos: \$U ${tx.amountUYU.toStringAsFixed(2)}"
+                                                : "En Dólares: U\$S ${tx.amountUSD.toStringAsFixed(2)}",
                                             child: Text(
                                                 "${tx.currency == 'USD' ? 'U\$S' : '\$U'} ${tx.amount.toStringAsFixed(2)}", 
                                                 style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),

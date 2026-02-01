@@ -350,6 +350,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   final amount = budgetProvider.getAmount(cat.id, m);
                   final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
                   
+                  final realVal = _getRealSum(txProvider.transactions, cat.name, m);
+                  
+                  // For past months, we show the Real Value. For current/future, the Budgeted Amount.
+                  final displayValue = isPast ? realVal : amount;
+                  
                   Widget cell = Container(
                     width: cellWidth,
                     height: 45,
@@ -357,24 +362,22 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 12),
                     child: _BudgetCell(
-                      initialValue: amount,
+                      initialValue: displayValue,
                       isReadOnly: isPast,
                       onChanged: (val) => budgetProvider.updateAmount(cat.id, m, val),
-                      textColor: Colors.white,
+                      textColor: isPast ? Colors.white70 : Colors.white, // Visual cue?
                     ),
                   );
 
                   if (isPast) {
-                     final realVal = _getRealSum(txProvider.transactions, cat.name, m);
                      final diff = realVal - amount;
-                     final isFavorable = diff >= 0; 
+                     final isFavorable = diff >= 0; // Depends on income/expense type, but keeping simple
                      
                      return Tooltip(
                         richMessage: TextSpan(
                           children: [
-                            TextSpan(text: "Presupuesto: ${_formatCurrency(amount)}\n"),
-                            TextSpan(text: "Real: ${_formatCurrency(realVal)}\n", style: const TextStyle(fontWeight: FontWeight.bold)),
-                            TextSpan(text: "Diferencia: ${_formatCurrency(diff)}", style: TextStyle(color: isFavorable ? Colors.greenAccent : Colors.redAccent)),
+                            TextSpan(text: "Estimado: ${_formatCurrency(amount)}\n"),
+                            TextSpan(text: "Diferencia: ${_formatCurrency(diff)}", style: TextStyle(color: diff == 0 ? Colors.white : (isFavorable ? Colors.greenAccent : Colors.redAccent))),
                           ]
                         ),
                         decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),

@@ -5,13 +5,18 @@ class Transaction extends Equatable {
   final DateTime date;
   final String description;
   final String category; // "Rubro"
-  final double amount; // Negative for expense, Positive for income
+  final double amount; // Display amount (could be USD or UYU depending on context)
   final String currency; // "UYU" or "USD"
   final String sourceAccount; // "Santander Caja Ahorro", "Visa Platinum", etc.
   final String accountNumber;
   final double balance; // Calculated running balance
+  
+  // New fields for improved multi-currency handling
+  final double originalAmount;
+  final double amountUYU;
+  final double amountUSD;
 
-  Transaction({ // Removed const to allow uuid generation if needed, or keep const and require ID
+  Transaction({
     String? id,
     required this.date,
     required this.description,
@@ -20,10 +25,11 @@ class Transaction extends Equatable {
     required this.currency,
     required this.sourceAccount,
     required this.accountNumber,
-    required this.balance,
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(); // Simple ID generation for now to avoid UUID dep issues if not installed yet. Or user approved UUID? 
-  // I requested UUID but it is waiting. 
-  // I will use a timestamp/random string for now to avoid blocking.
+    required this.balance, // Keep required, but might default to 0 if not calculated immediately
+    this.originalAmount = 0.0,
+    this.amountUYU = 0.0,
+    this.amountUSD = 0.0,
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Transaction copyWith({
     String? id,
@@ -35,6 +41,9 @@ class Transaction extends Equatable {
     String? sourceAccount,
     String? accountNumber,
     double? balance,
+    double? originalAmount,
+    double? amountUYU,
+    double? amountUSD,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -46,6 +55,9 @@ class Transaction extends Equatable {
       sourceAccount: sourceAccount ?? this.sourceAccount,
       accountNumber: accountNumber ?? this.accountNumber,
       balance: balance ?? this.balance,
+      originalAmount: originalAmount ?? this.originalAmount,
+      amountUYU: amountUYU ?? this.amountUYU,
+      amountUSD: amountUSD ?? this.amountUSD,
     );
   }
 
@@ -60,6 +72,9 @@ class Transaction extends Equatable {
       'sourceAccount': sourceAccount,
       'accountNumber': accountNumber,
       'balance': balance,
+      'originalAmount': originalAmount,
+      'amountUYU': amountUYU,
+      'amountUSD': amountUSD,
     };
   }
 
@@ -73,20 +88,26 @@ class Transaction extends Equatable {
       currency: json['currency'],
       sourceAccount: json['sourceAccount'],
       accountNumber: json['accountNumber'],
-      balance: json['balance'].toDouble(),
+      balance: json['balance']?.toDouble() ?? 0.0,
+      originalAmount: json['originalAmount']?.toDouble() ?? 0.0,
+      amountUYU: json['amountUYU']?.toDouble() ?? 0.0,
+      amountUSD: json['amountUSD']?.toDouble() ?? 0.0,
     );
   }
 
   @override
-      List<Object?> get props => [
-        id,
-        date,
-        description,
-        category,
-        amount,
-        currency,
-        sourceAccount,
-        accountNumber,
-        balance,
-      ];
+  List<Object?> get props => [
+    id,
+    date,
+    description,
+    category,
+    amount,
+    currency,
+    sourceAccount,
+    accountNumber,
+    balance,
+    originalAmount,
+    amountUYU,
+    amountUSD,
+  ];
 }
