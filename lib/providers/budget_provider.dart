@@ -5,16 +5,27 @@ class BudgetProvider extends ChangeNotifier {
   // Key 1: Category ID, Key 2: Month (yyyy-MM), Value: Amount
   Map<String, Map<String, double>> _budgetData = {};
   final FirestoreService _firestoreService = FirestoreService();
+  String? _uid;
 
-  BudgetProvider() {
+  BudgetProvider();
+
+  void init(String uid) {
+    _uid = uid;
     loadData();
+  }
+
+  void clear() {
+    _uid = null;
+    _budgetData = {};
+    notifyListeners();
   }
 
   Map<String, Map<String, double>> get budgetData => _budgetData;
 
   Future<void> loadData() async {
+    if (_uid == null) return;
     try {
-      final data = await _firestoreService.getBudget();
+      final data = await _firestoreService.getBudget(_uid!);
       if (data != null && data['budgetData'] != null) {
         // Parse nested map
         _budgetData = {};
@@ -39,10 +50,11 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   Future<void> _saveData() async {
+    if (_uid == null) return;
     final data = {
       'budgetData': _budgetData,
     };
-    await _firestoreService.saveBudget(data);
+    await _firestoreService.saveBudget(_uid!, data);
   }
 
   void _initializeDefaultData() {
@@ -69,7 +81,9 @@ class BudgetProvider extends ChangeNotifier {
           if (!_budgetData.containsKey(catId)) {
             _budgetData[catId] = {};
           }
-          _budgetData[catId]![monthStr] = amount;
+          if (!_budgetData[catId]!.containsKey(monthStr)) {
+             _budgetData[catId]![monthStr] = amount;
+          }
         });
     }
     

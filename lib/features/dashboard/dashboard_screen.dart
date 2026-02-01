@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/config_provider.dart';
 import '../../models/transaction_model.dart';
-import '../../models/config_models.dart';
+import '../../models/category.dart';
 import '../../config/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -439,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       double totalSum = 0;
 
       for (var tx in txs) {
-          final cat = config.categories.firstWhere((c) => c.name == tx.category, orElse: () => Category(id: '?', name: 'Unknown', type: CategoryType.expense));
+          final cat = config.categories.firstWhere((c) => c.name == tx.category, orElse: () => const Category(id: '?', name: 'Unknown', type: CategoryType.expense, icon: 'help_outline', color: '#9E9E9E'));
           
           if (cat.type == type) {
               double val = tx.amount.abs();

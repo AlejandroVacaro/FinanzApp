@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/config_provider.dart';
 import '../../providers/transactions_provider.dart';
-import '../../models/config_models.dart';
+import '../../models/category.dart';
 import '../../models/transaction_model.dart';
 import '../../models/transaction_model.dart' as tx_model;
 import 'package:intl/date_symbol_data_local.dart'; // Local setup

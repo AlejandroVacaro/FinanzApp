@@ -1,140 +1,120 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../models/transaction_model.dart' as tm;
-import '../models/config_models.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
+import '../models/transaction_model.dart';
+import '../models/category.dart';
+import '../models/assignment_rule.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String? get _uid => _auth.currentUser?.uid;
+  // --- Transactions ---
 
-  // --- TRANSACTIONS ---
+  Future<void> addTransaction(String uid, Transaction transaction) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc(transaction.id)
+        .set(transaction.toJson());
+  }
 
-  Future<List<tm.Transaction>> getTransactions() async {
-    if (_uid == null) return [];
-    
-    try {
-      final snapshot = await _db
-          .collection('users')
-          .doc(_uid)
-          .collection('transactions')
-          .orderBy('date', descending: true)
-          .get();
+  Future<void> updateTransaction(String uid, Transaction transaction) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc(transaction.id)
+        .update(transaction.toJson());
+  }
 
+
+  Future<void> deleteTransaction(String uid, String id) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc(id)
+        .delete();
+  }
+
+  Stream<List<Transaction>> getTransactions(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .snapshots()
+        .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id; // Ensure ID matches Document ID
-        return tm.Transaction.fromJson(data);
+        // Ensure ID is set from doc.id if not present
+        var data = doc.data();
+        data['id'] = doc.id; // Map key matches Transaction.fromJson expectation
+        return Transaction.fromJson(data);
       }).toList();
-    } catch (e) {
-      print("Firestore Error (getTransactions): $e");
-      return [];
-    }
+    });
   }
 
-  Future<void> addTransaction(tm.Transaction tx) async {
-    if (_uid == null) return;
-    // Use the ID from the model as the document ID
-    await _db.collection('users').doc(_uid).collection('transactions').doc(tx.id).set(tx.toJson());
+  // --- Config (Categories & Rules) ---
+
+  Future<void> saveCategory(String uid, Category category) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('categories')
+        .doc(category.id)
+        .set(category.toMap());
   }
 
-  Future<void> updateTransaction(tm.Transaction tx) async {
-    if (_uid == null) return;
-    await _db.collection('users').doc(_uid).collection('transactions').doc(tx.id).update(tx.toJson());
+  Future<void> deleteCategory(String uid, String id) async {
+     await _firestore.collection('users').doc(uid).collection('categories').doc(id).delete();
   }
 
-  Future<void> deleteTransaction(String id) async {
-    if (_uid == null) return;
-    await _db.collection('users').doc(_uid).collection('transactions').doc(id).delete();
+  Stream<List<Category>> getCategories(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('categories')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((d) => Category.fromMap(d.data(), d.id)).toList());
   }
 
-  // --- CATEGORIES ---
-
-  Future<List<Category>> getCategories() async {
-    if (_uid == null) return [];
-
-    try {
-      final snapshot = await _db.collection('users').doc(_uid).collection('categories').get();
-      return snapshot.docs.map((doc) => Category.fromJson(doc.data())).toList();
-    } catch (e) {
-      print("Firestore Error (getCategories): $e");
-      return []; // Caller should handle empty list (e.g., load defaults)
-    }
-  }
-
-  Future<void> saveCategories(List<Category> categories) async {
-    if (_uid == null) return;
-    final batch = _db.batch();
-    final col = _db.collection('users').doc(_uid).collection('categories');
-    
-    // Note: This is a full overwrite strategy for simplicity in this migration.
-    // Ideally, we should diff, but since the Provider saves the whole list...
-    
-    // 1. Delete existing (Optional, but safe to avoid stale data)
-    final existing = await col.get();
-    for (var doc in existing.docs) {
-      batch.delete(doc.reference);
-    }
-    
-    // 2. Add new
-    for (var cat in categories) {
-      batch.set(col.doc(cat.id), cat.toJson());
-    }
-    await batch.commit();
+  Future<void> saveRule(String uid, AssignmentRule rule) async {
+     await _firestore.collection('users').doc(uid).collection('rules').doc(rule.id).set(rule.toMap());
   }
   
-  // --- CONFIG / RULES ---
-  
-  Future<List<AssignmentRule>> getRules() async {
-     if (_uid == null) return [];
-     try {
-       final snapshot = await _db.collection('users').doc(_uid).collection('rules').get();
-       return snapshot.docs.map((doc) => AssignmentRule.fromJson(doc.data())).toList();
-     } catch (e) {
-       return [];
-     }
+  Future<void> deleteRule(String uid, String id) async {
+     await _firestore.collection('users').doc(uid).collection('rules').doc(id).delete();
   }
 
-  Future<void> saveRules(List<AssignmentRule> rules) async {
-    if (_uid == null) return;
-    final batch = _db.batch();
-    final col = _db.collection('users').doc(_uid).collection('rules');
-
-    final existing = await col.get();
-    for (var doc in existing.docs) {
-      batch.delete(doc.reference);
-    }
-
-    for (var rule in rules) {
-      batch.set(col.doc(rule.id), rule.toJson());
-    }
-    await batch.commit();
+  Stream<List<AssignmentRule>> getRules(String uid) {
+      return _firestore.collection('users').doc(uid).collection('rules').snapshots()
+      .map((s) => s.docs.map((d) => AssignmentRule.fromMap(d.data(), d.id)).toList());
   }
-  
-  // --- SETTINGS ---
-  
-  Future<Map<String, dynamic>?> getSettings() async {
-    if (_uid == null) return null;
-    final doc = await _db.collection('users').doc(_uid).collection('settings').doc('app_settings').get();
+
+  Future<void> saveSettings(String uid, Map<String, dynamic> settings) async {
+      await _firestore.collection('users').doc(uid).collection('config').doc('settings').set(settings);
+  }
+
+  Future<Map<String, dynamic>?> getSettings(String uid) async {
+      final doc = await _firestore.collection('users').doc(uid).collection('config').doc('settings').get();
+      return doc.data();
+  }
+
+  // --- Budget ---
+  Future<void> saveBudget(String uid, Map<String, dynamic> budgetData) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('data')
+        .doc('budget')
+        .set(budgetData);
+  }
+
+  Future<Map<String, dynamic>?> getBudget(String uid) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('data')
+        .doc('budget')
+        .get();
     return doc.data();
   }
-
-  Future<void> saveSettings(Map<String, dynamic> data) async {
-    if (_uid == null) return;
-    await _db.collection('users').doc(_uid).collection('settings').doc('app_settings').set(data);
-  }
-  
-  // --- BUDGET ---
-   Future<Map<String, dynamic>?> getBudget() async {
-    if (_uid == null) return null;
-    final doc = await _db.collection('users').doc(_uid).collection('budget').doc('current').get();
-    return doc.data();
-  }
-
-  Future<void> saveBudget(Map<String, dynamic> data) async {
-    if (_uid == null) return;
-    await _db.collection('users').doc(_uid).collection('budget').doc('current').set(data);
-  }
-
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/firestore_service.dart';
@@ -5,22 +6,43 @@ import '../services/firestore_service.dart';
 class TransactionsProvider extends ChangeNotifier {
   List<Transaction> _transactions = [];
   final FirestoreService _firestoreService = FirestoreService();
+  StreamSubscription? _subscription;
+  String? _uid;
 
-  TransactionsProvider() {
-    loadData();
+  // Initialize with User ID
+  void init(String uid) {
+    _uid = uid;
+    _subscription?.cancel();
+    _subscription = _firestoreService.getTransactions(uid).listen((data) {
+      // Sort by date ascending
+      data.sort((a, b) => a.date.compareTo(b.date));
+      _transactions = _calculateRunningBalances(data).reversed.toList();
+      notifyListeners();
+    });
+  }
+  
+  // Cleanup on logout
+  void clear() {
+    _subscription?.cancel();
+    _transactions = [];
+    _uid = null;
+    notifyListeners(); // Notify UI to show empty state
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   List<Transaction> get transactions => _transactions;
   
   Future<void> updateTransactionCategory(Transaction tx, String newCategory) async {
-      final index = _transactions.indexWhere((t) => t.id == tx.id);
-      if (index != -1) {
-          final updatedTx = tx.copyWith(category: newCategory);
-          _transactions[index] = updatedTx;
-          
-          await _firestoreService.updateTransaction(updatedTx);
-          notifyListeners();
-      }
+      if (_uid == null) return;
+      final updatedTx = tx.copyWith(category: newCategory);
+      // Optimistic update not strictly needed as Stream will update, but good for UX if slow
+      // leaving it to stream for simplicity and consistent state
+      await _firestoreService.updateTransaction(_uid!, updatedTx);
   }
 
   // Getters for Dashboard
@@ -32,24 +54,10 @@ class TransactionsProvider extends ChangeNotifier {
       .where((t) => t.amount < 0)
       .fold(0.0, (sum, t) => sum + t.amount);
 
-  double get currentBalance => _transactions.isNotEmpty ? _transactions.last.balance : 0.0;
-
-  Future<void> loadData() async {
-    try {
-      final loaded = await _firestoreService.getTransactions();
-      
-      // Sort by date ascending to calculate balances properly
-      loaded.sort((a, b) => a.date.compareTo(b.date));
-        
-      _transactions = _calculateRunningBalances(loaded).reversed.toList();
-      notifyListeners();
-    } catch (e) {
-      print('Error loading transactions: $e');
-    }
-  }
+  double get currentBalance => _transactions.isNotEmpty ? _transactions.first.balance : 0.0; // reversed, so first is latest
 
   Future<void> addTransactions(List<Transaction> newTransactions) async {
-    if (newTransactions.isEmpty) return;
+    if (_uid == null || newTransactions.isEmpty) return;
 
     // 1. Validation: Check for ANY duplicate
     for (final newTx in newTransactions) {
@@ -63,17 +71,10 @@ class TransactionsProvider extends ChangeNotifier {
       }
     }
 
-    // 2. Add to Firestore (Batch or Sequential)
+    // 2. Add to Firestore
     for (var tx in newTransactions) {
-      await _firestoreService.addTransaction(tx);
+      await _firestoreService.addTransaction(_uid!, tx);
     }
-
-    // 3. Merge locally & Recalculate
-    final List<Transaction> allTransactions = [..._transactions, ...newTransactions];
-    allTransactions.sort((a, b) => a.date.compareTo(b.date));
-    
-    _transactions = _calculateRunningBalances(allTransactions).reversed.toList();
-    notifyListeners();
   }
   
   // --- Balance Screen Logic ---
@@ -107,20 +108,13 @@ class TransactionsProvider extends ChangeNotifier {
     return liabilities;
   }
 
-  Future<void> clear() async {
-    // CAUTION: This deletes ALL transactions from Firestore
-    for (var tx in _transactions) {
-       await _firestoreService.deleteTransaction(tx.id);
-    }
-    _transactions = [];
-    notifyListeners();
-  }
-
   Future<void> deleteTransactionsByRange({
     required DateTime start,
     required DateTime end,
     required String type // 'CUENTA_UYU', 'CUENTA_USD', 'TARJETA'
   }) async {
+    if (_uid == null) return;
+
     final startDate = DateTime(start.year, start.month, start.day, 0, 0, 0);
     final endDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
@@ -140,16 +134,8 @@ class TransactionsProvider extends ChangeNotifier {
     }).toList();
 
     for (var tx in toDelete) {
-      await _firestoreService.deleteTransaction(tx.id);
+      await _firestoreService.deleteTransaction(_uid!, tx.id);
     }
-
-    _transactions.removeWhere((t) => toDelete.contains(t));
-
-    // Recalculate balances
-    final sorted = List<Transaction>.from(_transactions)..sort((a, b) => a.date.compareTo(b.date));
-    _transactions = _calculateRunningBalances(sorted).reversed.toList();
-    
-    notifyListeners();
   }
 
   List<Transaction> _calculateRunningBalances(List<Transaction> sortedTxs) {
@@ -162,4 +148,3 @@ class TransactionsProvider extends ChangeNotifier {
     return result;
   }
 }
-

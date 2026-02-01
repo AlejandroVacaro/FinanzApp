@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -9,11 +8,12 @@ import 'firebase_options.dart';
 import 'providers/transactions_provider.dart';
 import 'providers/config_provider.dart';
 import 'providers/budget_provider.dart';
-import 'widgets/main_layout.dart';
 import 'features/auth/login_screen.dart';
+import 'widgets/main_layout.dart';
+import 'services/auth_service.dart';
 import 'config/app_theme.dart';
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es');
   
@@ -21,7 +21,16 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const FinanzApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TransactionsProvider()),
+        ChangeNotifierProvider(create: (_) => ConfigProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+      ],
+      child: const FinanzApp(),
+    ),
+  );
 }
 
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
@@ -43,33 +52,49 @@ class FinanzApp extends StatelessWidget {
       scrollBehavior: MyCustomScrollBehavior(),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // While checking auth status, show a loading indicator
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: AuthService().userChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+           return const Scaffold(
               backgroundColor: Color(0xFF111827),
               body: Center(child: CircularProgressIndicator()),
-            );
-          }
+           );
+        }
 
-          if (snapshot.hasData) {
-            // User is logged in -> Inject Providers & Show App
-            return MultiProvider(
-              providers: [
-                ChangeNotifierProvider(create: (_) => TransactionsProvider()), // Loads data on create
-                ChangeNotifierProvider(create: (_) => ConfigProvider()), // Loads data on create
-                ChangeNotifierProvider(create: (_) => BudgetProvider()), // Loads data on create
-              ],
-              child: const MainLayout(),
-            );
-          } else {
-            // User is not logged in -> Show Login
-            return const LoginScreen();
-          }
-        },
-      ),
+        if (snapshot.hasData) {
+          final uid = snapshot.data!.uid;
+          
+          // Initialize providers with UID
+          // Using addPostFrameCallback to avoid state setting during build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+             Provider.of<TransactionsProvider>(context, listen: false).init(uid);
+             Provider.of<ConfigProvider>(context, listen: false).init(uid);
+             Provider.of<BudgetProvider>(context, listen: false).init(uid);
+          });
+
+          return const MainLayout();
+        } else {
+           // Clear providers
+           WidgetsBinding.instance.addPostFrameCallback((_) {
+             Provider.of<TransactionsProvider>(context, listen: false).clear();
+             Provider.of<ConfigProvider>(context, listen: false).clear();
+             Provider.of<BudgetProvider>(context, listen: false).clear();
+          });
+
+          return const LoginScreen();
+        }
+      },
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum CategoryType { income, expense }
+enum CategoryType { income, expense, transfer, savings }
 
 class Category extends Equatable {
   final String id;
@@ -30,19 +30,28 @@ class Category extends Equatable {
       icon: map['icon'] ?? 'help_outline',
       color: map['color'] ?? '#808080',
       type: CategoryType.values.firstWhere(
-        (e) => e.toString() == 'CategoryType.${map['type']}',
+        (e) => e.toString() == 'CategoryType.${map['type']}' || e.name == map['type'],
         orElse: () => CategoryType.expense,
       ),
       parentId: map['parentId'],
     );
   }
 
+  // Helper alias for generic consistency
+  factory Category.fromJson(Map<String, dynamic> json) {
+       // Assuming ID is passed inside if strict json or using fallback
+       return Category.fromMap(json, json['id'] ?? '');
+  }
+  
+  // Helper alias
+  Map<String, dynamic> toJson() => toMap();
+
   Map<String, dynamic> toMap() {
     return {
       'name': name,
       'icon': icon,
       'color': color,
-      'type': type.name, // 'income' o 'expense'
+      'type': type.name, // 'income', 'expense', etc.
       'parentId': parentId,
     };
   }
