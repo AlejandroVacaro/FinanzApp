@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:csv/csv.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../providers/transactions_provider.dart';
 import '../../providers/config_provider.dart';
@@ -283,6 +284,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 }
 
                 newTransactions.add(Transaction(
+                    id: const Uuid().v4(), // FORCE UNIQUE ID
                     date: date,
                     description: description,
                     category: finalCategory,
@@ -541,8 +543,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     child: Row(
                       children: [
                         _buildHeaderCell("FECHA", flex: 2),
-                        _buildHeaderCell("DESCRIPCIÓN", flex: 5), 
-                        _buildHeaderCell("RUBRO", flex: 2, alignment: Alignment.center), // Centered Header
+                        _buildHeaderCell("DESCRIPCIÓN", flex: 4), // Reduced from 5
+                        _buildHeaderCell("RUBRO", flex: 3, alignment: Alignment.center), // Increased from 2 to 3
                         _buildHeaderCell("CUENTA", flex: 3),
                         _buildHeaderCell("IMPORTE", flex: 2, alignment: Alignment.centerRight),
                       ],
@@ -573,7 +575,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                       ),
                                       // Description
                                       Expanded(
-                                        flex: 5, 
+                                        flex: 4, // Match Header
                                         child: Tooltip(
                                           message: tx.description,
                                           child: Text(
@@ -584,7 +586,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                         )
                                       ),
                                       // Category (Editable)
-                                      Expanded(flex: 2, child: 
+                                      Expanded(flex: 3, child: // Match Header
                                         InkWell(
                                           onTap: () => _showCategoryEditDialog(context, tx),
                                           child: Center(
@@ -654,6 +656,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         alignment: alignment,
         child: Text(
           text,
+          textAlign: alignment == Alignment.center ? TextAlign.center : (alignment == Alignment.centerRight ? TextAlign.right : TextAlign.left),
           style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
         ),
       ),
