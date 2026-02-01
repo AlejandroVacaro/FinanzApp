@@ -7,7 +7,3 @@
   # Carpeta donde Flutter deja los archivos listos para publicar
   publish = "build/web"
 
-[build.environment]
-  # Agrega Flutter al camino (PATH) para que se encuentre el comando
-  FLUTTER_ROOT = "flutter"
-  PATH = "$PATH:flutter/bin"
