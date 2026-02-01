@@ -1,0 +1,13 @@
+[build]
+  # 1. Clona Flutter (versión estable)
+  # 2. Habilita la web
+  # 3. Construye la app
+  command = "git clone https://github.com/flutter/flutter.git -b stable && ./flutter/bin/flutter config --enable-web && ./flutter/bin/flutter build web --release"
+  
+  # Carpeta donde Flutter deja los archivos listos para publicar
+  publish = "build/web"
+
+[build.environment]
+  # Agrega Flutter al camino (PATH) para que se encuentre el comando
+  FLUTTER_ROOT = "flutter"
+  PATH = "$PATH:flutter/bin"
