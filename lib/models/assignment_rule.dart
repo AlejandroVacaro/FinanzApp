@@ -49,6 +49,22 @@ class AssignmentRule extends Equatable {
     };
   }
 
+  AssignmentRule copyWith({
+    String? id,
+    String? keyword,
+    String? categoryId,
+    int? priority,
+    bool? isActive,
+  }) {
+    return AssignmentRule(
+      id: id ?? this.id,
+      keyword: keyword ?? this.keyword,
+      categoryId: categoryId ?? this.categoryId,
+      priority: priority ?? this.priority,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   // Alias for compatibility if needed
   Map<String, dynamic> toJson() => toMap();
 }
