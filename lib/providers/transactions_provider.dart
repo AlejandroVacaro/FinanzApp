@@ -71,9 +71,11 @@ class TransactionsProvider extends ChangeNotifier {
       }
     }
 
-    // 2. Add to Firestore
-    for (var tx in newTransactions) {
-      await _firestoreService.addTransaction(_uid!, tx);
+    // 2. Add to Firestore (Batch)
+    try {
+      await _firestoreService.batchAddTransactionsChunked(_uid!, newTransactions);
+    } catch (e) {
+      throw "Error guardando movimientos: $e";
     }
   }
   

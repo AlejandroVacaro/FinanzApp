@@ -29,7 +29,8 @@ class Transaction extends Equatable {
     this.originalAmount = 0.0,
     this.amountUYU = 0.0,
     this.amountUSD = 0.0,
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    this.amountUSD = 0.0,
+  }) : id = id ?? "${DateTime.now().microsecondsSinceEpoch}_${(description.hashCode + amount.hashCode).abs()}";
 
   Transaction copyWith({
     String? id,

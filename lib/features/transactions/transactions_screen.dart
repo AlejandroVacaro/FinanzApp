@@ -312,18 +312,28 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           }
         } // Fin for
 
+        // Ensure Spinner has been seen at least briefly (UX)
+        await Future.delayed(const Duration(milliseconds: 500));
+
         if (totalNewTransactions.isNotEmpty) {
-            Provider.of<TransactionsProvider>(context, listen: false).addTransactions(totalNewTransactions);
-            ModernFeedback.showSuccess(context, "¡Éxito! $filesProcessed archivos procesados. +${totalNewTransactions.length} movimientos.");
+            // Await the batch write fully
+            await Provider.of<TransactionsProvider>(context, listen: false).addTransactions(totalNewTransactions);
+            
+            if (context.mounted) {
+               // Success message ONLY after write is done
+               ModernFeedback.showSuccess(context, "¡Carga Completa! $filesProcessed archivos procesados.");
+            }
         } else if (errors > 0) {
-            ModernFeedback.showError(context, "Error", "No se pudieron procesar los archivos seleccionados.");
+            if (context.mounted) ModernFeedback.showError(context, "Error", "No se pudieron procesar los archivos seleccionados.");
         }
 
-        setState(() => _isLoading = false);
+        if (context.mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ModernFeedback.showError(context, "Error General", e.toString());
+      if (context.mounted) {
+         setState(() => _isLoading = false);
+         ModernFeedback.showError(context, "Error General", e.toString());
+      }
     }
   }
 
@@ -531,8 +541,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     child: Row(
                       children: [
                         _buildHeaderCell("FECHA", flex: 2),
-                        _buildHeaderCell("DESCRIPCIÓN", flex: 5), // Adjusted flex
-                        _buildHeaderCell("RUBRO", flex: 2), // Adjusted flex
+                        _buildHeaderCell("DESCRIPCIÓN", flex: 5), 
+                        _buildHeaderCell("RUBRO", flex: 2, alignment: Alignment.center), // Centered Header
                         _buildHeaderCell("CUENTA", flex: 3),
                         _buildHeaderCell("IMPORTE", flex: 2, alignment: Alignment.centerRight),
                       ],
@@ -542,7 +552,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               // Lista de Movimientos
               Expanded(
                   child: ListView.separated(
-                      reverse: !(_searchQuery.isNotEmpty), 
+                      reverse: false, // Standard Top-Down view
                       itemCount: filteredTxs.length,
                       separatorBuilder: (_,__) => const Divider(height: 1, color: Colors.white10),
                       itemBuilder: (context, i) {
@@ -610,17 +620,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           overflow: TextOverflow.ellipsis,
                                         )
                                       ),
-                                      // Amount
+                                      // Amount - Right Aligned
                                       Expanded(
                                         flex: 2, 
-                                        child: Tooltip(
-                                            message: tx.currency == 'USD' 
-                                                ? "En Pesos: \$U ${tx.amountUYU.toStringAsFixed(2)}"
-                                                : "En Dólares: U\$S ${tx.amountUSD.toStringAsFixed(2)}",
-                                            child: Text(
-                                                "${tx.currency == 'USD' ? 'U\$S' : '\$U'} ${tx.amount.toStringAsFixed(2)}", 
-                                                style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),
-                                            ),
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Tooltip(
+                                              message: tx.currency == 'USD' 
+                                                  ? "En Pesos: \$U ${tx.amountUYU.toStringAsFixed(2)}"
+                                                  : "En Dólares: U\$S ${tx.amountUSD.toStringAsFixed(2)}",
+                                              child: Text(
+                                                  "${tx.currency == 'USD' ? 'U\$S' : '\$U'} ${tx.amount.toStringAsFixed(2)}", 
+                                                  style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                                  textAlign: TextAlign.right,
+                                              ),
+                                          ),
                                         )
                                       ),
                                   ],

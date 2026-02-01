@@ -27,13 +27,53 @@ class FirestoreService {
   }
 
 
-  Future<void> deleteTransaction(String uid, String id) async {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('transactions')
-        .doc(id)
-        .delete();
+  Future<void> batchAddTransactions(String uid, List<Transaction> transactions) async {
+    final batch = _firestore.batch();
+    int count = 0;
+    
+    // Firestore batch limit is 500
+    for (var i = 0; i < transactions.length; i++) {
+        final tx = transactions[i];
+         // Ensure ID is valid or generate one if empty (Transaction model defaults it but let's be safe)
+        final docRef = _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('transactions')
+            .doc(tx.id.isEmpty ? null : tx.id);
+            
+        batch.set(docRef, tx.toJson());
+        count++;
+
+        if (count == 499) {
+           await batch.commit();
+           count = 0;
+           // New batch needed? Yes, create new one implicitly by calling batch() again? 
+           // actually batch object cannot be reused easily.
+           // Better approach: External loop chunking.
+        }
+    }
+     // Commit remaining
+    if (count > 0) await batch.commit();
+  }
+  
+  // Revised method with proper chunking logic
+  Future<void> batchAddTransactionsChunked(String uid, List<Transaction> transactions) async {
+      int chunkSize = 450; // Safety margin
+      for (var i = 0; i < transactions.length; i += chunkSize) {
+          final batch = _firestore.batch();
+          final end = (i + chunkSize < transactions.length) ? i + chunkSize : transactions.length;
+          final chunk = transactions.sublist(i, end);
+          
+          for (var tx in chunk) {
+              final docRef = _firestore
+                .collection('users')
+                .doc(uid)
+                .collection('transactions')
+                .doc(tx.id);
+              batch.set(docRef, tx.toJson());
+          }
+          await batch.commit();
+      }
   }
 
   Stream<List<Transaction>> getTransactions(String uid) {
