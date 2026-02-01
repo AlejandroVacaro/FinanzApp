@@ -26,6 +26,15 @@ class FirestoreService {
         .update(transaction.toJson());
   }
 
+  Future<void> deleteTransaction(String uid, String id) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .doc(id)
+        .delete();
+  }
+
 
   Future<void> batchAddTransactions(String uid, List<Transaction> transactions) async {
     final batch = _firestore.batch();
