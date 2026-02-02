@@ -165,43 +165,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
         double transferSum = 0.0;
         double savingsSum = 0.0;
         
-        for (var c in incomeCats) incomeSum += budgetProvider.getAmount(c.id, m);
-        for (var c in expenseCats) expenseSum += budgetProvider.getAmount(c.id, m);
-        for (var c in transferCats) transferSum += budgetProvider.getAmount(c.id, m);
-        for (var c in savingsCats) savingsSum += budgetProvider.getAmount(c.id, m);
+        final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
+        
+        for (var c in incomeCats) {
+             incomeSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+        }
+        for (var c in expenseCats) {
+             expenseSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+        }
+        for (var c in transferCats) {
+             transferSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+        }
+        for (var c in savingsCats) {
+             savingsSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+        }
         
         final margen = budgetProvider.getMargin(m);
 
         // 3. Calculate Result
-        // "Resultado tome únicamente los datos de ese mes, además del margen, ignorando el saldo inicial"
-        // Result = (Income + Expense + Transfer + Savings) + Margen
-        // Wait, normally Result is Net Flow. User asked:
-        // "Resultado tome únicamente los datos de ese mes... ignorando el saldo inicial"
-        // So Result = Sum of all flows (including Savings? Usually result includes everything happening in month).
-        // Let's assume Result = Net Cash Flow of the month.
-        // And "Margen" is a line that impacts result.
-        
-        // Note: Expenses are usually stored as negative.
-        // Result = Income + Expenses + Transfers + Savings + Margen
-        final monthResult = incomeSum + expenseSum + transferSum + savingsSum + (margen * -1); // Margin is usually a "cost" or "allocation", so maybe negative?
-        // User said: "Margen... por si pasa algo... no quiero que se impacte en gráficas".
-        // If I put 500 in Margin, does it reduce my result? Yes, it's money "set aside".
-        // Let's assume input is positive, but acts as an expense (reduces result).
-        // User: "entre categoría no asignada y resultado haya otra línea... Margen"
-        // Let's treat it as an expense-like flow for the Result, but not for Carry Over.
-        
-        // Correct approach based on standard budgeting:
-        // Margin lowers the "Result" (Available to save/burn), but since it's "money set aside", it might technically still be in the account (part of Initial Balance next month)?
-        // User said: "quiero que deje por fuera los ahorros y el margen" for the Saldo Inicial calculation.
-        // So:
-        // CarryOver = Start + Income + Expense + Transfer. (Savings and Margin are ignored).
-        
-        final result = incomeSum + expenseSum + transferSum + savingsSum - margen; // Assuming Margen reduces result
+        // Result = (Income + Expense + Transfer + Savings) - Margen
+        final result = incomeSum + expenseSum + transferSum + savingsSum - margen; 
         finalResults[m] = result;
         
         // 4. Update Carry Over for Next Month
-        previousCarryOverReference = startBalance + incomeSum + expenseSum + transferSum;
+        // User requested Saldo Final = Initial + Income - Expenses.
+        // Usually Carry Over = Previous Final. 
+        // If Final excludes Transfer/Savings, then Carry Over should too?
+        // User said "Saldo Inicial... quiero que deje por fuera los ahorros y el margen."
+        // Bridges (Transfer) were included in my previous logic (Income+Expense+Transfer).
+        // If Final Balance Row explicitly excludes Bridge, I should probably align Carry Over if user intends them to match.
+        // User: "saldo final toma el saldo incial más los ingresos menos los egresos únicamente"
+        
+        previousCarryOverReference = startBalance + incomeSum + expenseSum + transferSum; // Keep Transfer in CarryOver for now unless explicitly told to remove from chain. BRIDGE usually implies moving to next month.
     }
+
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark, 
@@ -288,6 +285,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                  _buildFixedCell("SALDO INICIAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
                                  _buildFixedPlaceholderForSection("INGRESOS", incomeCats.length, incomeCats, Colors.green),
                                  _buildFixedPlaceholderForSection("EGRESOS", expenseCats.length, expenseCats, Colors.red),
+                                 _buildFixedCell("SALDO FINAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
+
                                  _buildFixedPlaceholderForSection("AHORRO", savingsCats.length, savingsCats, Colors.orange),
                                  _buildFixedPlaceholderForSection("MOV. PUENTE", transferCats.length, transferCats, Colors.blue),
                                  
@@ -295,7 +294,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                  _buildFixedCell("MARGEN", isBold: true, bg: const Color(0xFF111827), textColor: Colors.lightBlueAccent),
                                  
                                  _buildFixedCell("RESULTADO", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white70),
-                                 _buildFixedCell("SALDO FINAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
                               ],
                             ),
                           ),
@@ -335,6 +333,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                    
                                    _buildSectionGrid(incomeCats, _months, budgetProvider, txProvider, cellWidth, Colors.green, Colors.greenAccent),
                                    _buildSectionGrid(expenseCats, _months, budgetProvider, txProvider, cellWidth, Colors.red, Colors.redAccent),
+                                   
+                                   // Saldo Final Row (After Expenses)
+                                   // User Formula: Initial + Income + Expenses ONLY (Ignore Savings/Bridge/Margin)
+                                   // Note: Expenses are negative in DB/Provider, so we ADD them.
+                                   Row(children: _months.map((m) {
+                                       // Re-calculate local sums to be safe or use pre-calc?
+                                       // We need specific sums for this formula.
+                                       final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
+                                       
+                                       double inc = 0.0; 
+                                       for(var c in incomeCats) inc += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+                                       
+                                       double exp = 0.0;
+                                       for(var c in expenseCats) exp += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+                                       
+                                       final finalBal = initialBalances[m]! + inc + exp;
+                                       
+                                       return _buildDisplayCell(finalBal, cellWidth, bg: const Color(0xFF1F2937), textColor: Colors.white, isBold: true);
+                                   }).toList()),
+
                                    _buildSectionGrid(savingsCats, _months, budgetProvider, txProvider, cellWidth, Colors.orange, Colors.orangeAccent),
                                    _buildSectionGrid(transferCats, _months, budgetProvider, txProvider, cellWidth, Colors.blue, Colors.blueAccent),
                                    
@@ -366,12 +384,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                        final res = finalResults[m]!;
                                        final color = res >= 0 ? Colors.greenAccent : Colors.redAccent;
                                        return _buildDisplayCell(res, cellWidth, bg: const Color(0xFF111827), textColor: color, isBold: true);
-                                   }).toList()),
-
-                                   // Saldo Final Row
-                                   Row(children: _months.map((m) {
-                                       final finalBal = initialBalances[m]! + finalResults[m]!;
-                                       return _buildDisplayCell(finalBal, cellWidth, bg: const Color(0xFF1F2937), textColor: Colors.white, isBold: true);
                                    }).toList()),
                                 ],
                               ),
