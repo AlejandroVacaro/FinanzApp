@@ -379,44 +379,171 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _showCategoryEditDialog(BuildContext context, Transaction tx) {
-      String selectedCategory = tx.category;
       final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+      final txProvider = Provider.of<TransactionsProvider>(context, listen: false);
+
+      String selectedCategory = tx.category;
+      String description = tx.description;
+      bool saveRule = false;
+      
       final categories = tx.amount < 0 ? configProvider.expenseCategories : configProvider.incomeCategories;
       
       showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-              backgroundColor: const Color(0xFF1F2937),
-              title: const Text("Editar Rubro", style: TextStyle(color: Colors.white)),
-              content: StatefulBuilder(
-                  builder: (ctx, setState) {
-                      return DropdownButton<String>(
-                          value: categories.contains(selectedCategory) ? selectedCategory : null,
-                          dropdownColor: const Color(0xFF374151),
-                          style: const TextStyle(color: Colors.white),
-                          isExpanded: true,
-                          hint: const Text("Seleccionar Rubro", style: TextStyle(color: Colors.white70)),
-                          items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                          onChanged: (val) {
-                              if (val != null) setState(() => selectedCategory = val);
-                          }
-                      );
-                  }
-              ),
-              actions: [
-                  TextButton(
-                      child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-                      onPressed: () => Navigator.pop(ctx)
-                  ),
-                  TextButton(
-                      child: const Text("Guardar", style: TextStyle(color: Colors.blueAccent)),
-                      onPressed: () {
-                          Provider.of<TransactionsProvider>(context, listen: false).updateTransactionCategory(tx, selectedCategory);
-                          Navigator.pop(ctx);
-                      }
-                  )
-              ],
+          builder: (ctx) => StatefulBuilder(
+              builder: (ctx, setState) {
+                  return AlertDialog(
+                      backgroundColor: const Color(0xFF1F2937),
+                      title: const Text("Editar Movimiento", style: TextStyle(color: Colors.white)),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. Editable Description
+                          TextField(
+                            controller: TextEditingController(text: description),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              labelText: "Descripción",
+                              labelStyle: TextStyle(color: Colors.white70),
+                              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                            ),
+                            onChanged: (val) => description = val,
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // 2. Category Dropdown
+                          DropdownButtonFormField<String>(
+                              value: categories.contains(selectedCategory) ? selectedCategory : null,
+                              dropdownColor: const Color(0xFF374151),
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: "Rubro",
+                                labelStyle: TextStyle(color: Colors.white70),
+                                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                              ),
+                              isExpanded: true,
+                              hint: const Text("Seleccionar Rubro", style: TextStyle(color: Colors.white70)),
+                              items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                              onChanged: (val) {
+                                  if (val != null) setState(() => selectedCategory = val);
+                              }
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 3. Save Rule Checkbox
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text("Guardar asignación automática", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                            subtitle: const Text("Se usará esta descripción para asignar futuros movimientos.", style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            value: saveRule, 
+                            onChanged: (val) => setState(() => saveRule = val ?? false),
+                            activeColor: Colors.blueAccent,
+                            checkColor: Colors.white,
+                            controlAffinity: ListTileControlAffinity.leading,
+                          ),
+                        ],
+                      ),
+                      actions: [
+                          TextButton(
+                              child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+                              onPressed: () => Navigator.pop(ctx)
+                          ),
+                          TextButton(
+                              child: const Text("Guardar", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                              onPressed: () async {
+                                  Navigator.pop(ctx); // Close Dialog first
+
+                                  // 1. Update Transaction (Category & Description)
+                                  // Warning: description update for transaction wasn't explicitly asked but implied by "texto editable".
+                                  // However, TransactionsProvider doesn't have updateTransactionDescription?
+                                  // Let's check provider usage in the original code. It uses updateTransactionCategory.
+                                  // I might need to update the provider or just pass the description if the provider supports full update? 
+                                  // Looking at provider code: `await _firestoreService.updateTransaction(_uid!, updatedTx);` 
+                                  // It uses copyWith and saves. So I can update description too manually here.
+                                  
+                                  final newTx = tx.copyWith(category: selectedCategory, description: description);
+                                  // Transaction provider currently has `updateTransactionCategory`. 
+                                  // Let's assume WE ONLY update category via that method or I need to update the method?
+                                  // Provide code showed `updateTransactionCategory(Transaction tx, String newCategory)`.
+                                  // I should probably manually call firestore update or modify the provider to support generic update.
+                                  // ACTUALLY, for safety, I will stick to what the provider offers or do a quick update? 
+                                  // The user wants "texto del movimiento editable". 
+                                  // I'll assume they want the transaction description updated too.
+                                  // Since I can't easily change the provider method signature without breaking other things (maybe), 
+                                  // I'll just check if I can use the same method but passing a modified TX? 
+                                  // `updateTransactionCategory` takes `Transaction tx` and `String newCategory`.
+                                  // It does `tx.copyWith(category: newCategory)`. It ignores my description change if I pass old tx.
+                                  
+                                  // FIX: I should use a generic update or call firestore directly? 
+                                  // Better: Expand the provider method or add a new one? 
+                                  // Or just modify the provider method to take the whole updated transaction?
+                                  // Wait, `updateTransactionCategory` implementation:
+                                  /*
+                                  Future<void> updateTransactionCategory(Transaction tx, String newCategory) async {
+                                      if (_uid == null) return;
+                                      final updatedTx = tx.copyWith(category: newCategory);
+                                      await _firestoreService.updateTransaction(_uid!, updatedTx);
+                                  }
+                                  */
+                                  // It overwrites my description change. 
+                                  // I will create a new method in this file to handle the update properly or just modify the provider in next step?
+                                  // I'll modify the provider in the next step to `updateTransaction` generic.
+                                  // For now, I will invoke a hypothetical `updateTransaction` or just `updateTransactionCategory` and fix it in provider.
+                                  // Actually, I can just use the firestore service directly? No, keep architecture.
+                                  
+                                  // Let's assumme I will rename `updateTransactionCategory` to `updateTransaction` in Provider.
+                                  await txProvider.updateTransaction(newTx); 
+
+                                  // 2. Save Rule Logic
+                                  Category? catObj = configProvider.categories.cast<Category?>().firstWhere(
+                                      (c) => c?.name == selectedCategory, orElse: () => null
+                                  );
+                                  
+                                  if (saveRule && catObj != null) {
+                                      configProvider.addRule(description, catObj.id);
+                                      
+                                      if (context.mounted) {
+                                          _showRetroactiveDialog(context, description, selectedCategory);
+                                      }
+                                  }
+                              }
+                          )
+                      ],
+                  );
+              }
           )
+      );
+  }
+
+  void _showRetroactiveDialog(BuildContext context, String keyword, String categoryName) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1F2937),
+          title: const Text("Aplicar a existentes", style: TextStyle(color: Colors.white)),
+          content: Text(
+            "¿Deseas aplicar esta asignación a los movimientos ya registrados que contengan '$keyword'?",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("No", style: TextStyle(color: Colors.grey)),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+            TextButton(
+              child: const Text("Sí, aplicar", style: TextStyle(color: Colors.blueAccent)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final count = await Provider.of<TransactionsProvider>(context, listen: false)
+                    .applyRuleToExistingTransactions(keyword, categoryName);
+                if (context.mounted) {
+                   ModernFeedback.showSuccess(context, "Se actualizaron $count movimientos.");
+                }
+              },
+            ),
+          ],
+        ),
       );
   }
 
@@ -427,7 +554,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
-        title: const Text("Mis Movimientos", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Movimientos", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         centerTitle: true,
         elevation: 0,

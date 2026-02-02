@@ -37,12 +37,10 @@ class TransactionsProvider extends ChangeNotifier {
 
   List<Transaction> get transactions => _transactions;
   
-  Future<void> updateTransactionCategory(Transaction tx, String newCategory) async {
+  Future<void> updateTransaction(Transaction tx) async {
       if (_uid == null) return;
-      final updatedTx = tx.copyWith(category: newCategory);
-      // Optimistic update not strictly needed as Stream will update, but good for UX if slow
-      // leaving it to stream for simplicity and consistent state
-      await _firestoreService.updateTransaction(_uid!, updatedTx);
+      // Update full transaction (category, description, etc)
+      await _firestoreService.updateTransaction(_uid!, tx);
   }
 
   // Getters for Dashboard
@@ -151,6 +149,33 @@ class TransactionsProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<int> applyRuleToExistingTransactions(String keyword, String categoryName) async {
+    if (_uid == null) return 0;
+    
+    final matchingTxs = _transactions.where((tx) =>
+      tx.description.toLowerCase().contains(keyword.toLowerCase()) && 
+      tx.category != categoryName
+    ).toList();
+    
+    if (matchingTxs.isEmpty) return 0;
+    
+    final updatedTxs = matchingTxs.map((tx) => tx.copyWith(category: categoryName)).toList();
+    
+    // Update local state (Optimistic)
+    // Note: Since _transactions is derived from firestore stream, 
+    // we rely on the helper to push to backend, then stream will update list.
+    // But for immediate feedback we can notify listeners if we manually updated local list,
+    // however, the stream approach is safer.
+    
+    try {
+      await _firestoreService.batchUpdateTransactionsChunked(_uid!, updatedTxs);
+      return updatedTxs.length;
+    } catch (e) {
+      debugPrint("Error applying rule: $e");
+      rethrow;
     }
   }
 

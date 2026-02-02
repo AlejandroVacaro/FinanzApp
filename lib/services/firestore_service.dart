@@ -100,6 +100,25 @@ class FirestoreService {
       }
   }
 
+  Future<void> batchUpdateTransactionsChunked(String uid, List<Transaction> transactions) async {
+      int chunkSize = 450; 
+      for (var i = 0; i < transactions.length; i += chunkSize) {
+          final batch = _firestore.batch();
+          final end = (i + chunkSize < transactions.length) ? i + chunkSize : transactions.length;
+          final chunk = transactions.sublist(i, end);
+          
+          for (var tx in chunk) {
+              final docRef = _firestore
+                .collection('users')
+                .doc(uid)
+                .collection('transactions')
+                .doc(tx.id);
+              batch.update(docRef, tx.toJson());
+          }
+          await batch.commit();
+      }
+  }
+
   Stream<List<Transaction>> getTransactions(String uid) {
     return _firestore
         .collection('users')

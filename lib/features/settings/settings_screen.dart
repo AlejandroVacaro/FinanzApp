@@ -539,6 +539,11 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
                     provider.editRule(existing.id, keyword, selectedCatId!);
                   }
                   Navigator.pop(ctx);
+                  
+                  // Show retroactive dialog
+                  // Need to resolve category name for the dialog
+                  final catName = provider.getCategoryById(selectedCatId!)?.name ?? "Rubro seleccionado";
+                  _showRetroactiveDialog(context, keyword, catName);
                 }
               },
               child: const Text("Guardar"),
@@ -547,6 +552,37 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
         ),
       ),
     );
+  }
+
+  void _showRetroactiveDialog(BuildContext context, String keyword, String categoryName) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1F2937),
+          title: const Text("Aplicar a existentes", style: TextStyle(color: Colors.white)),
+          content: Text(
+            "¿Deseas aplicar esta asignación a los movimientos ya registrados que contengan '$keyword'?",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("No", style: TextStyle(color: Colors.grey)),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+            TextButton(
+              child: const Text("Sí, aplicar", style: TextStyle(color: Colors.blueAccent)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final count = await Provider.of<TransactionsProvider>(context, listen: false)
+                    .applyRuleToExistingTransactions(keyword, categoryName);
+                if (context.mounted) {
+                   ModernFeedback.showSuccess(context, "Se actualizaron $count movimientos.");
+                }
+              },
+            ),
+          ],
+        ),
+      );
   }
 }
 
