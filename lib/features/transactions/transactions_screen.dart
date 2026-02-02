@@ -177,94 +177,112 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 double valDolares = 0.0;
                 
                 if (isBankAccount) {
-                    // --- ESTRATEGIA HÍBRIDA: HEADERS + CONTENIDO ---
-                    int idxDesc = -1;
+                    // --- ESTRATEGIA: ANCLAJE RELATIVO (Anchor Strategy) ---
+                    // El usuario indica que la estructura es: [..., Debito, Credito, Saldo]
+                    // El problema es que al buscar "Débito" vs "Crédito" por headers a veces falla o los montos vacíos confunden al escáner de tipos.
+                    // SOLUCIÓN: Buscar "Saldos" (Header) o usar posición, y definir Deb/Cred RELATIVOS a él.
+                    
+                    int idxBalance = -1;
                     int idxDebit = -1;
                     int idxCredit = -1;
-                    
-                    // 1. Intentar por Headers primero
+                    int idxDesc = -1;
+
+                    // 1. Buscar Header "Saldos" o "Saldo" o "Balance" para encontrar columna pivote
                     if (dataStartIndex > 0) {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
-                        idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("desc") || h.contains("detalle"));
-                        idxDebit = headers.indexWhere((h) => h.contains("débito") || h.contains("debito") || h.contains("retiro"));
-                        idxCredit = headers.indexWhere((h) => h.contains("crédito") || h.contains("credito") || h.contains("depósito") || h.contains("deposito"));
+                        idxBalance = headers.indexWhere((h) => h.contains("saldo"));
+                        
+                        if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion") || h.contains("referencia"));
                     }
 
-                    // 2. Si falla, usar HEURÍSTICA DE CONTENIDO (Escáner de Tipos)
-                    if (idxDesc == -1 || (idxDebit == -1 && idxCredit == -1)) {
-                        // Analizar la fila actual (y siguientes si es necesario) para determinar tipos
-                        // Buscamos: 
-                        // - Columna Numérica Negativa/Positiva mezclada o dos columnas numéricas -> Montos
-                        // - Columna de Texto largo -> Descripción
-                        
-                        int bestTxtCol = -1;
-                        int maxTxtLen = 0;
-                        List<int> numericCols = [];
-
-                        for (int c = 0; c < row.length; c++) {
-                            String val = row[c].toString();
-                            // Chequear si es numero
-                            if (RegExp(r'^-?[0-9]+([.,][0-9]+)?$').hasMatch(val.trim().replaceAll('.', '').replaceAll(',', '.'))) {
-                                numericCols.add(c);
-                            } else if (val.length > 5 && !val.contains(RegExp(r'\d{2}/\d{2}/\d{4}'))) {
-                                // Candidato a Texto (y no es fecha)
-                                if (val.length > maxTxtLen) {
-                                  maxTxtLen = val.length;
-                                  bestTxtCol = c;
-                                }
-                            }
-                        }
-                        
-                        if (idxDesc == -1) idxDesc = bestTxtCol;
-                        
-                        // Asignar columnas numéricas
-                        if (numericCols.isNotEmpty) {
-                           // Si hay 2 columnas numéricas y no tenemos definidos deb/cred
-                           if (numericCols.length >= 2 && idxDebit == -1 && idxCredit == -1) {
-                               idxDebit = numericCols[0]; // Asumimos orden standard: Debito, Credito
-                               idxCredit = numericCols[1];
-                           } else if (numericCols.length == 1 && idxDebit == -1 && idxCredit == -1) {
-                               // Probablemente col única de importe con signo
-                               idxDebit = numericCols[0]; // Usaremos esta como "Amount" genérico
-                           }
-                        }
+                    // 2. Si falló header, usar heurística de "Última columna numérica" en las primeras filas de datos
+                    if (idxBalance == -1) {
+                         // Escanear filas de datos para encontrar la estructura común
+                         // Asumimos que "Saldo" es la última columna numérica relevante a la derecha.
+                         for (int k = dataStartIndex; k < rows.length && k < dataStartIndex + 5; k++) {
+                             var sampleRow = rows[k];
+                             List<int> nums = [];
+                             for(int c=0; c<sampleRow.length; c++) {
+                                 if (RegExp(r'^-?[0-9]+([.,][0-9]+)?$').hasMatch(sampleRow[c].toString().trim().replaceAll('.', '').replaceAll(',', '.'))) {
+                                     nums.add(c);
+                                 }
+                             }
+                             if (nums.isNotEmpty) {
+                                 idxBalance = nums.last; // Asumimos saldo al final
+                                 break; // Encontrado un candidato
+                             }
+                         }
                     }
 
-                    // Fallback final
-                    if (idxDesc == -1) idxDesc = 3; 
-                    if (idxDebit == -1) idxDebit = 4; // Si es columna única, debito chequea primero
-                    
-                    // --- EXTRACCIÓN ---
+                    // 3. Definir Debit y Credit relativos a Balance
+                    // Estructura BROU/Standard: [Debit] [Credit] [Balance]
+                    if (idxBalance != -1 && idxBalance >= 2) {
+                        idxCredit = idxBalance - 1;
+                        idxDebit = idxBalance - 2;
+                    } else if (idxBalance != -1 && idxBalance == 1) {
+                         // Caso raro: [Amount, Balance]? -> Asumimos Columna única
+                         idxDebit = 0;
+                    } else {
+                         // Fallback absoluto si no hallamos nada (Estructura fija según screenshot usuario)
+                         // Screenshot muestra: ..., Descripción (Col 2), Débito (Col 3), Crédito (Col 4), Saldos (Col 5) - (0-indexed? No, screenshot muestra headers)
+                         // Excel screenshot: Col 4 (Saldos), Col 5 (Debit?? No, wait)
+                         // Re-reading user request: "la primera columna de número son los débitos, la segunda los créditos, la tercera el saldo"
+                         // Entonces order: Debit, Credit, Balance.
+                         // Esto coincide con idxCredit = idxBalance -1, idxDebit = idxBalance - 2.
+                         
+                         // Si falla detección dinámica, usemos índices fijos basados en la observación del usuario si tenemos suficientes columnas
+                         if (row.length >= 6) { 
+                             // Asumiendo Concepto en col 2 o 3.
+                             // User says: "la primera columna de número son los débitos"
+                             // Buscamos primera columna numérica available? NO, eso fallaba antes (salary bug).
+                             // We MUST rely on fixed positions relative to end or specific indices if headers fail.
+                             idxDebit = row.length - 3; // Antepenúltima
+                             idxCredit = row.length - 2; // Penúltima
+                             // This is risky. Let's stick to strict relative if Balance found, or search headers.
+                         }
+                    }
+
+                    // 4. Extracción
+                    // Descripción
+                    if (idxDesc == -1) {
+                        // Buscar la columna de texto más larga a la izquierda de los números
+                         int limitCol = (idxDebit != -1) ? idxDebit : row.length;
+                         int maxLen = 0;
+                         for(int c=0; c < limitCol; c++) {
+                             String txt = row[c].toString();
+                             if (txt.length > maxLen && !txt.contains(RegExp(r'\d'))) { // Texto puro preferible
+                                 maxLen = txt.length;
+                                 idxDesc = c;
+                             }
+                         }
+                         if (idxDesc == -1) idxDesc = 2; // Default
+                    }
                     if (row.length > idxDesc) description = row[idxDesc].toString();
-                    
+
                     double debito = 0.0;
                     double credito = 0.0;
-                    
+
                     if (idxDebit != -1 && row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
                     if (idxCredit != -1 && row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
-                    
-                    // Lógica especial para Columna Única de Importe
-                    if (idxDebit != -1 && idxCredit == -1) {
-                        amount = debito; // Asumimos que viene con signo (-100 o +100)
-                         // Si el banco trae débitos positivos, necesitamos heurística extra, pero standard es con signo si es col única.
-                         // Si BROU: trae Debito y Credito separados positivos.
+
+                    // Lógica BROU / Bancaria: Débito y Crédito separados y positivos
+                    if (debito != 0 && credito == 0) {
+                         amount = -debito.abs(); // Es gasto
+                    } else if (credito != 0 && debito == 0) {
+                         amount = credito.abs(); // Es ingreso
+                    } else if (debito != 0 && credito != 0) {
+                         // Raro en una misma tx bancaria, pero priorizamos neto
+                         amount = credito.abs() - debito.abs();
                     } else {
-                        // Lógica Debito/Credito Separados (Positivos ambos, columna define signo)
-                        if (debito != 0) {
-                            amount = -debito.abs(); // Forzamos negativo
-                        } else if (credito != 0) {
-                            amount = credito.abs(); // Forzamos positivo
-                        }
+                        // Ambos 0?
+                        continue;
                     }
-                    
+
                     currency = fileCurrency;
-                    
                     if (currency == "UYU") {
-                        valPesos = amount;
-                        valDolares = 0; 
+                         valPesos = amount;
                     } else {
-                        valDolares = amount;
-                        valPesos = 0;
+                         valDolares = amount;
                     }
                     valOriginal = amount;
 

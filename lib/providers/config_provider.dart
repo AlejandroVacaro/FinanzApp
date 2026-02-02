@@ -56,7 +56,7 @@ class ConfigProvider extends ChangeNotifier {
       if (cats.isEmpty) {
         _initializeDefaults(uid);
       } else {
-        _categories = cats;
+        _categories = cats..sort((a, b) => a.name.compareTo(b.name));
         notifyListeners();
       }
     });

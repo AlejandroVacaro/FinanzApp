@@ -114,10 +114,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     // Group Categories
     final categories = configProvider.categories;
-    final incomeCats = categories.where((c) => c.type == CategoryType.income).toList();
-    final expenseCats = categories.where((c) => c.type == CategoryType.expense).toList();
-    final savingsCats = categories.where((c) => c.type == CategoryType.savings).toList();
-    final transferCats = categories.where((c) => c.type == CategoryType.transfer).toList();
+    final incomeCats = categories.where((c) => c.type == CategoryType.income).toList()..sort((a, b) => a.name.compareTo(b.name));
+    final expenseCats = categories.where((c) => c.type == CategoryType.expense).toList()..sort((a, b) => a.name.compareTo(b.name));
+    final savingsCats = categories.where((c) => c.type == CategoryType.savings).toList()..sort((a, b) => a.name.compareTo(b.name));
+    final transferCats = categories.where((c) => c.type == CategoryType.transfer).toList()..sort((a, b) => a.name.compareTo(b.name));
 
     const double cellWidth = 110.0;
     const double rowHeight = 45.0;
@@ -126,24 +126,81 @@ class _BudgetScreenState extends State<BudgetScreen> {
     // Calculate Chain
     Map<DateTime, double> initialBalances = {};
     Map<DateTime, double> finalResults = {};
-    double currentBalance = 0.0; // Starting Balance
+    
+    // Logic:
+    // Saldo Inicial (Month M) = 
+    //    IF Manual Override Exists for M -> Use Manual Value
+    //    ELSE -> Saldo Inicial (M-1) + Result (M-1) 
+    //    WAIT, User said: "Saldo inicial... va a tomar el saldo inicial más los otros subtotales (ingresos, egresos y movimiento puente), quiero que deje por fuera los ahorros y el margen."
+    
+    // So Carry Over Formula:
+    // NextStart = CurrentStart + Income + Expense + Puente (Transfer)
+    // Savings and Margen are NOT included in the carry over to the next month's start.
 
-    for (var m in _months) {
-        initialBalances[m] = currentBalance;
-        double monthFlow = 0.0;
+    double previousCarryOverReference = 0.0; // The value that travels to the next month
+
+    for (int i = 0; i < _months.length; i++) {
+        final m = _months[i];
         
-        // Sum all budget items for this month
-        // Flow = Income + Expense (negative) + etc.
-        // Assuming Expense is stored as negative in BudgetProvider? 
-        // If BudgetProvider stores positive for expense, we need to negate.
-        // Let's check BudgetProvider... initialized with Negatives in defaults. 
-        // So simple Sum is correct.
-        for (var c in categories) {
-           monthFlow += budgetProvider.getAmount(c.id, m);
+        // 1. Determine Start Balance for this month
+        double startBalance;
+        final manualBalance = budgetProvider.getManualInitialBalance(m);
+        
+        if (manualBalance != null) {
+           startBalance = manualBalance;
+           previousCarryOverReference = manualBalance; // Reset the chain from here
+        } else {
+           if (i == 0) {
+              startBalance = 0.0; // Or some global initial defaults? For now 0 if no history
+           } else {
+              startBalance = previousCarryOverReference;
+           }
         }
         
-        currentBalance += monthFlow;
-        finalResults[m] = currentBalance;
+        initialBalances[m] = startBalance;
+
+        // 2. Calculate Flows for this month
+        double incomeSum = 0.0;
+        double expenseSum = 0.0;
+        double transferSum = 0.0;
+        double savingsSum = 0.0;
+        
+        for (var c in incomeCats) incomeSum += budgetProvider.getAmount(c.id, m);
+        for (var c in expenseCats) expenseSum += budgetProvider.getAmount(c.id, m);
+        for (var c in transferCats) transferSum += budgetProvider.getAmount(c.id, m);
+        for (var c in savingsCats) savingsSum += budgetProvider.getAmount(c.id, m);
+        
+        final margen = budgetProvider.getMargin(m);
+
+        // 3. Calculate Result
+        // "Resultado tome únicamente los datos de ese mes, además del margen, ignorando el saldo inicial"
+        // Result = (Income + Expense + Transfer + Savings) + Margen
+        // Wait, normally Result is Net Flow. User asked:
+        // "Resultado tome únicamente los datos de ese mes... ignorando el saldo inicial"
+        // So Result = Sum of all flows (including Savings? Usually result includes everything happening in month).
+        // Let's assume Result = Net Cash Flow of the month.
+        // And "Margen" is a line that impacts result.
+        
+        // Note: Expenses are usually stored as negative.
+        // Result = Income + Expenses + Transfers + Savings + Margen
+        final monthResult = incomeSum + expenseSum + transferSum + savingsSum + (margen * -1); // Margin is usually a "cost" or "allocation", so maybe negative?
+        // User said: "Margen... por si pasa algo... no quiero que se impacte en gráficas".
+        // If I put 500 in Margin, does it reduce my result? Yes, it's money "set aside".
+        // Let's assume input is positive, but acts as an expense (reduces result).
+        // User: "entre categoría no asignada y resultado haya otra línea... Margen"
+        // Let's treat it as an expense-like flow for the Result, but not for Carry Over.
+        
+        // Correct approach based on standard budgeting:
+        // Margin lowers the "Result" (Available to save/burn), but since it's "money set aside", it might technically still be in the account (part of Initial Balance next month)?
+        // User said: "quiero que deje por fuera los ahorros y el margen" for the Saldo Inicial calculation.
+        // So:
+        // CarryOver = Start + Income + Expense + Transfer. (Savings and Margin are ignored).
+        
+        final result = incomeSum + expenseSum + transferSum + savingsSum - margen; // Assuming Margen reduces result
+        finalResults[m] = result;
+        
+        // 4. Update Carry Over for Next Month
+        previousCarryOverReference = startBalance + incomeSum + expenseSum + transferSum;
     }
 
     return Scaffold(
@@ -233,6 +290,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                  _buildFixedPlaceholderForSection("EGRESOS", expenseCats.length, expenseCats, Colors.red),
                                  _buildFixedPlaceholderForSection("AHORRO", savingsCats.length, savingsCats, Colors.orange),
                                  _buildFixedPlaceholderForSection("MOV. PUENTE", transferCats.length, transferCats, Colors.blue),
+                                 
+                                 // Margen Row
+                                 _buildFixedCell("MARGEN", isBold: true, bg: const Color(0xFF111827), textColor: Colors.lightBlueAccent),
+                                 
                                  _buildFixedCell("RESULTADO", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white70),
                               ],
                             ),
@@ -247,12 +308,57 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                    // Saldo Inicial Row
-                                   Row(children: _months.map((m) => _buildDisplayCell(initialBalances[m]!, cellWidth, bg: const Color(0xFF111827), textColor: Colors.white70)).toList()),
+                                   Row(children: _months.map((m) {
+                                      final isManual = budgetProvider.getManualInitialBalance(m) != null;
+                                      final note = budgetProvider.getInitialBalanceNote(m);
+                                      
+                                      Widget cell = InkWell(
+                                        onTap: () {}, // Double tap needed? User asked for double click. InkWell supports onDoubleTap.
+                                        onDoubleTap: () => _showInitialBalanceDialog(context, m, budgetProvider),
+                                        child: Stack(
+                                          children: [
+                                            _buildDisplayCell(initialBalances[m]!, cellWidth, bg: const Color(0xFF111827), textColor: Colors.white70, isBold: true),
+                                            if (isManual)
+                                              Positioned(
+                                                top: 2, left: 2,
+                                                child: Tooltip(
+                                                  message: "Saldo modificado manualmente.\n${note ?? ''}",
+                                                  child: const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 14),
+                                                ),
+                                              )
+                                          ],
+                                        ),
+                                      );
+                                      return SizedBox(width: cellWidth, child: cell);
+                                   }).toList()),
                                    
                                    _buildSectionGrid(incomeCats, _months, budgetProvider, txProvider, cellWidth, Colors.green, Colors.greenAccent),
                                    _buildSectionGrid(expenseCats, _months, budgetProvider, txProvider, cellWidth, Colors.red, Colors.redAccent),
                                    _buildSectionGrid(savingsCats, _months, budgetProvider, txProvider, cellWidth, Colors.orange, Colors.orangeAccent),
                                    _buildSectionGrid(transferCats, _months, budgetProvider, txProvider, cellWidth, Colors.blue, Colors.blueAccent),
+                                   
+                                   // Margen Row
+                                   Row(
+                                      children: _months.map((m) {
+                                         final margin = budgetProvider.getMargin(m);
+                                         return Container(
+                                           width: cellWidth,
+                                           height: 45,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF111827),
+                                              border: Border(bottom: BorderSide(color: Colors.grey[900]!), right: BorderSide(color: Colors.grey[900]!))
+                                            ),
+                                            alignment: Alignment.centerRight,
+                                            padding: const EdgeInsets.only(right: 12),
+                                            child: _BudgetCell(
+                                              initialValue: margin,
+                                              isReadOnly: false,
+                                              onChanged: (val) => budgetProvider.updateMargin(m, val),
+                                              textColor: Colors.lightBlueAccent,
+                                            ),
+                                         );
+                                      }).toList(),
+                                   ),
                                    
                                    // Resultado Row
                                    Row(children: _months.map((m) {
@@ -334,23 +440,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Totals Row
-          Row(
-            children: months.map((m) {
-               double total = 0.0;
-               for (var c in cats) total += budgetProvider.getAmount(c.id, m);
-               return Container(
-                 width: cellWidth,
-                 height: 45,
-                 alignment: Alignment.centerRight,
-                 padding: const EdgeInsets.only(right: 12),
-                 color: colorHeader.withOpacity(0.1),
-                 child: Text(_formatCurrency(total), style: TextStyle(fontWeight: FontWeight.bold, color: colorText, fontSize: 13)),
-               );
-            }).toList(),
-          ),
-          
-          // Actual Rows
+          // Actual Rows First (as requested: "quiero que primero aparezcan los ítems y que debajo de cada tipo aparezca el total")
           ...cats.map((cat) {
              return Row(
                children: months.map((m) {
@@ -372,19 +462,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       initialValue: displayValue,
                       isReadOnly: isPast,
                       onChanged: (val) => budgetProvider.updateAmount(cat.id, m, val),
-                      textColor: isPast ? Colors.white70 : Colors.white, // Visual cue?
+                      textColor: isPast ? Colors.white70 : Colors.white,
                     ),
                   );
 
                   if (isPast) {
                      final diff = realVal - amount;
-                     // Logic:
-                     // Income (Positive): Real > Budget (Positive Diff) = Good (Green)
-                     // Expense (Negative): Real > Budget (Positive Diff -> -800 > -1000) = Good (Green)
-                     // So simply: Diff > 0 is Good. Diff < 0 is Bad.
-                     
                      final color = diff > 0 ? const Color(0xFF00C853) : (diff < 0 ? const Color(0xFFFF5252) : Colors.black);
-                     
                      return Tooltip(
                         richMessage: TextSpan(
                           children: [
@@ -394,7 +478,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)]),
-                        textStyle: const TextStyle(color: Colors.black87), // Tooltip default text color check
+                        textStyle: const TextStyle(color: Colors.black87),
                         child: cell,
                      );
                   }
@@ -402,8 +486,97 @@ class _BudgetScreenState extends State<BudgetScreen> {
                }).toList(),
              );
           }).toList(),
+          
+          // Section Totals Row (Now at the bottom)
+          Row(
+            children: months.map((m) {
+               double total = 0.0;
+               for (var c in cats) total += budgetProvider.getAmount(c.id, m);
+               return Container(
+                 width: cellWidth,
+                 height: 45,
+                 alignment: Alignment.centerRight,
+                 padding: const EdgeInsets.only(right: 12),
+                 color: colorHeader.withOpacity(0.1),
+                 child: Text(_formatCurrency(total), style: TextStyle(fontWeight: FontWeight.bold, color: colorText, fontSize: 13)),
+               );
+            }).toList(),
+          ),
         ],
       );
+  }
+
+
+  void _showInitialBalanceDialog(BuildContext context, DateTime month, BudgetProvider provider) {
+    final TextEditingController amountController = TextEditingController(
+       text: FormatUtils.formatValue(provider.getManualInitialBalance(month) ?? 0).replaceAll('.', '').replaceAll(',', '') // Rough unformat, better to use raw number
+    );
+     // Better to just start empty or with current raw value?
+    amountController.text = (provider.getManualInitialBalance(month) ?? 0).toString();
+    
+    final TextEditingController noteController = TextEditingController(text: provider.getInitialBalanceNote(month) ?? "");
+    
+    showDialog(
+      context: context, 
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1F2937),
+        title: const Text("Editar Saldo Inicial", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Este valor sobreescribirá el cálculo automático.", style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "Monto",
+                labelStyle: TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: "Observación (Obligatorio)",
+                labelStyle: TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Restaurar Automático", style: TextStyle(color: Colors.redAccent)),
+            onPressed: () {
+               provider.clearManualInitialBalance(month);
+               Navigator.pop(ctx);
+            },
+          ),
+          TextButton(
+             child: const Text("Cancelar"),
+             onPressed: () => Navigator.pop(ctx),
+          ),
+          ElevatedButton(
+            child: const Text("Guardar"),
+            onPressed: () {
+               final val = double.tryParse(amountController.text.replaceAll(',', '.')) ?? 0.0;
+               if (noteController.text.trim().isEmpty) {
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("La observación es obligatoria.")));
+                 return;
+               }
+               provider.updateManualInitialBalance(month, val, noteController.text);
+               Navigator.pop(ctx);
+            },
+          )
+        ],
+      )
+    );
   }
 }
 

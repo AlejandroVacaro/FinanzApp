@@ -4,6 +4,16 @@ import '../services/firestore_service.dart';
 class BudgetProvider extends ChangeNotifier {
   // Key 1: Category ID, Key 2: Month (yyyy-MM), Value: Amount
   Map<String, Map<String, double>> _budgetData = {};
+  
+  // Key: Month (yyyy-MM), Value: Amount
+  Map<String, double> _marginData = {};
+  
+  // Key: Month (yyyy-MM), Value: Amount
+  Map<String, double> _manualInitialBalances = {};
+  
+  // Key: Month (yyyy-MM), Value: Note
+  Map<String, String> _initialBalanceNotes = {};
+
   final FirestoreService _firestoreService = FirestoreService();
   String? _uid;
 
@@ -17,16 +27,22 @@ class BudgetProvider extends ChangeNotifier {
   void clear() {
     _uid = null;
     _budgetData = {};
+    _marginData = {};
+    _manualInitialBalances = {};
+    _initialBalanceNotes = {};
     notifyListeners();
   }
 
   Map<String, Map<String, double>> get budgetData => _budgetData;
+  Map<String, double> get marginData => _marginData;
+  Map<String, double> get manualInitialBalances => _manualInitialBalances;
+  Map<String, String> get initialBalanceNotes => _initialBalanceNotes;
 
   Future<void> loadData() async {
     if (_uid == null) return;
     try {
       final data = await _firestoreService.getBudget(_uid!);
-      if (data != null && data['budgetData'] != null) {
+        if (data != null && data['budgetData'] != null) {
         // Parse nested map
         _budgetData = {};
         final rawMap = data['budgetData'] as Map<String, dynamic>;
@@ -39,6 +55,25 @@ class BudgetProvider extends ChangeNotifier {
             }),
           );
         });
+
+        // Load Margen
+        if (data['marginData'] != null) {
+           final rawMargin = data['marginData'] as Map<String, dynamic>;
+           _marginData = rawMargin.map((k, v) => MapEntry(k, (v as num).toDouble()));
+        }
+
+        // Load Manual Initial Balances
+        if (data['manualInitialBalances'] != null) {
+           final rawManual = data['manualInitialBalances'] as Map<String, dynamic>;
+           _manualInitialBalances = rawManual.map((k, v) => MapEntry(k, (v as num).toDouble()));
+        }
+
+        // Load Notes
+        if (data['initialBalanceNotes'] != null) {
+           final rawNotes = data['initialBalanceNotes'] as Map<String, dynamic>;
+           _initialBalanceNotes = rawNotes.map((k, v) => MapEntry(k, v.toString()));
+        }
+
         notifyListeners();
       } else {
         _initializeDefaultData();
@@ -53,7 +88,11 @@ class BudgetProvider extends ChangeNotifier {
     if (_uid == null) return;
     final data = {
       'budgetData': _budgetData,
+      'marginData': _marginData,
+      'manualInitialBalances': _manualInitialBalances,
+      'initialBalanceNotes': _initialBalanceNotes,
     };
+
     await _firestoreService.saveBudget(_uid!, data);
   }
 
@@ -87,6 +126,10 @@ class BudgetProvider extends ChangeNotifier {
         });
     }
     
+    
+    // Initialize default Margin
+    // _marginData['2025-04'] = 0.0; // Example if needed
+
     _saveData();
   }
 
@@ -114,5 +157,45 @@ class BudgetProvider extends ChangeNotifier {
     });
     
     return total;
+  }
+
+  // --- MARGIN METHODS ---
+  double getMargin(DateTime month) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    return _marginData[monthStr] ?? 0.0;
+  }
+
+  void updateMargin(DateTime month, double amount) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    _marginData[monthStr] = amount;
+    _saveData();
+    notifyListeners();
+  }
+
+  // --- MANUAL INITIAL BALANCE METHODS ---
+  double? getManualInitialBalance(DateTime month) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    return _manualInitialBalances[monthStr];
+  }
+
+  String? getInitialBalanceNote(DateTime month) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    return _initialBalanceNotes[monthStr];
+  }
+
+  void updateManualInitialBalance(DateTime month, double amount, String note) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    _manualInitialBalances[monthStr] = amount;
+    _initialBalanceNotes[monthStr] = note;
+    _saveData();
+    notifyListeners();
+  }
+
+  void clearManualInitialBalance(DateTime month) {
+    final monthStr = "${month.year}-${month.month.toString().padLeft(2, '0')}";
+    _manualInitialBalances.remove(monthStr);
+    _initialBalanceNotes.remove(monthStr);
+    _saveData(); // Explicitly save the removal
+    notifyListeners();
   }
 }

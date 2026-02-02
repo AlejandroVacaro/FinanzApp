@@ -1,6 +1,6 @@
 {
-    "name": "finanzapp",
-    "short_name": "finanzapp",
+    "name": "FinanzApp",
+    "short_name": "FinanzApp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
