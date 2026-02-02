@@ -10,6 +10,7 @@ import '../../models/transaction_model.dart';
 import '../../models/transaction_model.dart' as tx_model;
 import 'package:intl/date_symbol_data_local.dart'; // Local setup
 import '../../config/app_theme.dart';
+import '../../utils/format_utils.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -437,7 +438,7 @@ class _BudgetCellState extends State<_BudgetCell> {
 
   String _format(double val) {
     if (val == 0) return "";
-    return NumberFormat.decimalPattern('es').format(val);
+    return FormatUtils.formatValue(val);
   }
 
   double _parse(String text) {
@@ -467,7 +468,9 @@ class _BudgetCellState extends State<_BudgetCell> {
 }
 
 String _formatCurrency(double val) {
-  return NumberFormat.currency(locale: 'es_UY', symbol: '\$', decimalDigits: 0).format(val);
+  // Use generic UYU formatting (symbol + correct separators)
+  // Budget usually implies local currency unless specified, defaulting to UYU format which is $U 1.234,56
+  return FormatUtils.formatCurrency(val, 'UYU');
 }
 extension StringExtension on String {
   String capitalize() {

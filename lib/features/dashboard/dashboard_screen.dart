@@ -7,6 +7,7 @@ import '../../providers/config_provider.dart';
 import '../../models/transaction_model.dart';
 import '../../models/category.dart';
 import '../../config/app_theme.dart';
+import '../../utils/format_utils.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -296,7 +297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                       Text(title, style: TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 8),
-                      Text(NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(value), 
+                      Text(FormatUtils.formatCurrency(value, 'UYU'), 
                           style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 20)),
                   ],
               ),
@@ -404,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             leftTitles: AxisTitles(
-               sideTitles: SideTitles(showTitles: true, reservedSize: 45, getTitlesWidget: (val, _) => Text(NumberFormat.compact().format(val), style: const TextStyle(color: Colors.white70, fontSize: 10))),
+               sideTitles: SideTitles(showTitles: true, reservedSize: 45, getTitlesWidget: (val, _) => Text(FormatUtils.formatForChart(val), style: const TextStyle(color: Colors.white70, fontSize: 10))),
             ),
             topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -417,7 +418,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 getTooltipItems: (touchedSpots) {
                    return touchedSpots.map((spot) {
                       return LineTooltipItem(
-                         "${NumberFormat.currency(symbol: '\$').format(spot.y)}",
+                         "${FormatUtils.formatCurrency(spot.y, 'UYU')}",
                          TextStyle(color: spot.bar.color, fontWeight: FontWeight.bold)
                       );
                    }).toList();
@@ -476,7 +477,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 leftTitles: AxisTitles(
-                   sideTitles: SideTitles(showTitles: true, reservedSize: 45, getTitlesWidget: (val, _) => Text(NumberFormat.compact().format(val), style: const TextStyle(color: Colors.white70, fontSize: 10))),
+                   sideTitles: SideTitles(showTitles: true, reservedSize: 45, getTitlesWidget: (val, _) => Text(FormatUtils.formatForChart(val), style: const TextStyle(color: Colors.white70, fontSize: 10))),
                 ),
                 topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),

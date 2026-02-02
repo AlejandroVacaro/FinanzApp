@@ -10,9 +10,11 @@ import 'package:uuid/uuid.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/config_provider.dart';
 import '../../models/transaction_model.dart';
+import '../../models/category.dart';
 import '../../utils/notifications.dart';
-import '../../widgets/ui_components.dart';
+
 import '../../config/app_theme.dart';
+import '../../utils/format_utils.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -813,10 +815,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           alignment: Alignment.centerRight,
                                           child: Tooltip(
                                               message: tx.currency == 'USD' 
-                                                  ? "En Pesos: \$U ${tx.amountUYU.toStringAsFixed(2)}"
-                                                  : "En Dólares: U\$S ${tx.amountUSD.toStringAsFixed(2)}",
+                                                  ? "En Pesos: ${FormatUtils.formatCurrency(tx.amountUYU, 'UYU')}"
+                                                  : "En Dólares: ${FormatUtils.formatCurrency(tx.amountUSD, 'USD')}",
                                               child: Text(
-                                                  "${tx.currency == 'USD' ? 'U\$S' : '\$U'} ${tx.amount.toStringAsFixed(2)}", 
+                                                  FormatUtils.formatCurrency(tx.amount, tx.currency), 
                                                   style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),
                                                   textAlign: TextAlign.right,
                                               ),
