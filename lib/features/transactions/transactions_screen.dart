@@ -388,7 +388,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       String description = tx.description;
       bool saveRule = false;
       
-      final categories = tx.amount < 0 ? configProvider.expenseCategories : configProvider.incomeCategories;
+      final categories = configProvider.categories.map((e) => e.name).toList()..sort();
       
       showDialog(
           context: context,
