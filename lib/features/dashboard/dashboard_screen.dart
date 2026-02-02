@@ -31,6 +31,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 
 
+  // Pie Chart State
+  int _touchedIndexIncome = -1;
+  int _touchedIndexExpense = -1;
+
   @override
   Widget build(BuildContext context) {
       final txProvider = Provider.of<TransactionsProvider>(context);
@@ -76,57 +80,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 margin: const EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(color: const Color(0xFF1F2937), borderRadius: BorderRadius.circular(12)),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                     Row(
-                                       children: [
-                                          const Icon(Icons.calendar_today, color: Colors.white70, size: 20),
+                                      const Icon(Icons.calendar_today, color: Colors.white70, size: 20),
+                                      const SizedBox(width: 8),
+                                      DropdownButton<int>(
+                                        value: selectedMonth?.month,
+                                        dropdownColor: const Color(0xFF374151),
+                                        style: const TextStyle(color: Colors.white),
+                                        hint: const Text("Todo", style: TextStyle(color: Colors.white)),
+                                        underline: const SizedBox(),
+                                        items: [
+                                            if (selectedMonth == null) 
+                                                const DropdownMenuItem(value: null, child: Text("Histórico")),
+                                            ...List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(
+                                                value: m, 
+                                                child: Text(DateFormat('MMMM', 'es').format(DateTime(2000, m)).capitalize())
+                                            ))
+                                        ],
+                                        onChanged: (v) => setState(() {
+                                            if (v == null) {
+                                                selectedMonth = null;
+                                            } else {
+                                                selectedMonth = DateTime(selectedYear, v);
+                                            }
+                                        }),
+                                      ),
+                                      if (selectedMonth != null) ...[
                                           const SizedBox(width: 8),
                                           DropdownButton<int>(
-                                            value: selectedMonth?.month,
+                                            value: selectedYear,
                                             dropdownColor: const Color(0xFF374151),
                                             style: const TextStyle(color: Colors.white),
-                                            hint: const Text("Todo", style: TextStyle(color: Colors.white)),
                                             underline: const SizedBox(),
-                                            items: [
-                                               if (selectedMonth == null) 
-                                                   const DropdownMenuItem(value: null, child: Text("Histórico")),
-                                               ...List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(
-                                                    value: m, 
-                                                    child: Text(DateFormat('MMMM', 'es').format(DateTime(2000, m)).capitalize())
-                                               ))
-                                            ],
+                                            items: List.generate(5, (i) => DateTime.now().year - 2 + i).map((y) => DropdownMenuItem(
+                                                    value: y, child: Text(y.toString())
+                                            )).toList(),
                                             onChanged: (v) => setState(() {
-                                                if (v == null) {
-                                                   selectedMonth = null;
-                                                } else {
-                                                   selectedMonth = DateTime(selectedYear, v);
-                                                }
+                                                selectedYear = v!;
+                                                selectedMonth = DateTime(selectedYear, selectedMonth!.month);
                                             }),
-                                          ),
-                                          if (selectedMonth != null) ...[
-                                              const SizedBox(width: 8),
-                                              DropdownButton<int>(
-                                                value: selectedYear,
-                                                dropdownColor: const Color(0xFF374151),
-                                                style: const TextStyle(color: Colors.white),
-                                                underline: const SizedBox(),
-                                                items: List.generate(5, (i) => DateTime.now().year - 2 + i).map((y) => DropdownMenuItem(
-                                                     value: y, child: Text(y.toString())
-                                                )).toList(),
-                                                onChanged: (v) => setState(() {
-                                                    selectedYear = v!;
-                                                    selectedMonth = DateTime(selectedYear, selectedMonth!.month);
-                                                }),
-                                              )
-                                          ]
-                                       ],
-                                     ),
-                                     TextButton.icon(
-                                       onPressed: () => setState(() => selectedMonth = null), 
-                                       icon: const Icon(Icons.restore, color: Colors.blueAccent), 
-                                       label: const Text("Ver Histórico", style: TextStyle(color: Colors.blueAccent))
-                                     )
+                                          )
+                                      ],
+                                      const SizedBox(width: 16),
+                                      TextButton.icon(
+                                        onPressed: () => setState(() => selectedMonth = null), 
+                                        icon: const Icon(Icons.restore, color: Colors.blueAccent), 
+                                        label: const Text("Ver Histórico", style: TextStyle(color: Colors.blueAccent))
+                                      )
                                   ],
                                 ),
                               ),
@@ -145,7 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                               // 3. Charts Area
                               SizedBox(
-                                  height: 500, 
+                                  height: 800, 
                                   child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -211,11 +211,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               child: Column(
                                                   children: [
                                                        Expanded(
-                                                           child: _buildPieChartContainer("Ingresos por Rubro", filteredTxs, CategoryType.income), // Pass Filtered
+                                                           child: _buildPieChartContainer(
+                                                              "Ingresos por Rubro", 
+                                                              filteredTxs, 
+                                                              CategoryType.income,
+                                                              _touchedIndexIncome,
+                                                              (i) => setState(() => _touchedIndexIncome = i)
+                                                           ), 
                                                        ),
                                                        const SizedBox(height: 16),
                                                        Expanded(
-                                                           child: _buildPieChartContainer("Egresos por Rubro", filteredTxs, CategoryType.expense), // Pass Filtered
+                                                           child: _buildPieChartContainer(
+                                                              "Egresos por Rubro", 
+                                                              filteredTxs, 
+                                                              CategoryType.expense,
+                                                              _touchedIndexExpense,
+                                                              (i) => setState(() => _touchedIndexExpense = i)
+                                                           ), 
                                                        ),
                                                   ],
                                               ),
@@ -328,6 +340,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return Map.fromEntries(data.entries.toList()..sort((a,b) => a.key.compareTo(b.key)));
   }
 
+  List<double> _getMinMaxY(Map<DateTime, Map<String, double>> data, List<String> activeKeys) {
+    double minVal = 0;
+    double maxVal = 0;
+    bool first = true;
+
+    for (var entry in data.values) {
+      for (var key in activeKeys) {
+        final val = entry[key] ?? 0;
+        if (first) {
+          minVal = val;
+          maxVal = val;
+          first = false;
+        } else {
+          if (val < minVal) minVal = val;
+          if (val > maxVal) maxVal = val;
+        }
+      }
+    }
+
+    if (maxVal == 0 && minVal == 0) return [-100, 100];
+
+    double range = maxVal - minVal;
+    if (range == 0) range = maxVal.abs() > 0 ? maxVal.abs() : 100;
+    
+    return [minVal - (range * 0.1), maxVal + (range * 0.1)];
+  }
+
   Widget _buildMainLineChart(List<Transaction> txs) {
       final data = _prepareMonthlyData(txs);
       final keys = data.keys.toList();
@@ -336,10 +375,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       bool isDaily = selectedMonth != null;
 
+      // Determine active keys based on toggles
+      List<String> activeKeys = [];
+      if (showIncome) activeKeys.add("income");
+      if (showExpense) activeKeys.add("expense");
+      if (showResult) activeKeys.add("result");
+
+      final minMax = _getMinMaxY(data, activeKeys);
+
       return LineChart(
         LineChartData(
-          minY: -50000, maxY: 150000, 
-          titlesData: FlTitlesData(
+          minY: minMax[0], maxY: minMax[1],
+          clipData: const FlClipData.all(),          titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -407,9 +454,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
        final months = data.keys.toList();
        if (months.isEmpty) return const SizedBox();
 
+       final minMax = _getMinMaxY(data, ["category"]);
+
        return LineChart(
           LineChartData(
-             titlesData: FlTitlesData(
+             minY: minMax[0], maxY: minMax[1],
+             clipData: const FlClipData.all(),             titlesData: FlTitlesData(
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
@@ -422,6 +472,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                     reservedSize: 30,
                     interval: 1,
+                    
                   ),
                 ),
                 leftTitles: AxisTitles(
@@ -439,7 +490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
        );
   }
 
-  Widget _buildPieChartContainer(String title, List<Transaction> txs, CategoryType type) {
+  Widget _buildPieChartContainer(String title, List<Transaction> txs, CategoryType type, int touchedIndex, Function(int) onTouch) {
       final config = Provider.of<ConfigProvider>(context, listen: false);
       Map<String, double> catSums = {};
       double totalSum = 0;
@@ -457,54 +508,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (catSums.isEmpty) return _buildTile(title, const Center(child: Text("Sin datos", style: TextStyle(color: Colors.white54))));
 
       final sortedEntries = catSums.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-      final topEntries = sortedEntries.take(5).toList(); 
+      final topEntries = sortedEntries.take(10).toList(); // Show more entries if space permits, or stick to top 5
 
       return _buildTile(
           title,
-          Row(
-              children: [
-                   Expanded(
-                       flex: 3,
-                       child: PieChart(
-                           PieChartData(
-                               sectionsSpace: 2,
-                               centerSpaceRadius: 30,
-                               sections: topEntries.map((e) {
-                                   final index = topEntries.indexOf(e);
-                                   final color = Colors.primaries[index % Colors.primaries.length];
-                                   return PieChartSectionData(
-                                       value: e.value,
-                                       color: color,
-                                       radius: 40,
-                                       showTitle: false,
-                                   );
-                               }).toList(),
-                           )
-                       ),
-                   ),
-                   Expanded(
-                       flex: 2,
-                       child: Column(
-                           mainAxisAlignment: MainAxisAlignment.center,
-                           crossAxisAlignment: CrossAxisAlignment.start,
-                           children: topEntries.map((e) {
-                               final index = topEntries.indexOf(e);
-                               final color = Colors.primaries[index % Colors.primaries.length];
-                               return Padding(
-                                 padding: const EdgeInsets.symmetric(vertical: 2.0),
-                                 child: Row(
-                                     children: [
-                                         Container(width: 8, height: 8, color: color),
-                                         const SizedBox(width: 4),
-                                         Expanded(child: Text(e.key, style: const TextStyle(color: Colors.white70, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                                     ],
-                                 ),
-                               );
-                           }).toList(),
-                       )
-                   )
-              ],
-          )
+          PieChart(
+            PieChartData(
+              pieTouchData: PieTouchData(
+                touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                  setState(() {
+                    if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                      onTouch(-1);
+                      return;
+                    }
+                    onTouch(pieTouchResponse.touchedSection!.touchedSectionIndex);
+                  });
+                }
+              ),
+              borderData: FlBorderData(show: false),
+              sectionsSpace: 0,
+              centerSpaceRadius: 40,
+              sections: topEntries.map((e) {
+                  final isTouched = topEntries.indexOf(e) == touchedIndex;
+                  final fontSize = isTouched ? 16.0 : 12.0;
+                  final radius = isTouched ? 60.0 : 50.0;
+                  final index = topEntries.indexOf(e);
+                  final color = Colors.primaries[index % Colors.primaries.length];
+                  
+                  final percentage = totalSum > 0 ? (e.value / totalSum * 100) : 0;
+                  
+                  return PieChartSectionData(
+                      color: color,
+                      value: e.value,
+                      title: isTouched ? "${e.key}\n${percentage.toStringAsFixed(1)}%" : "",
+                      radius: radius,
+                      titleStyle: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          shadows: const [Shadow(color: Colors.black, blurRadius: 2)],
+                      ),
+                  );
+              }).toList(),
+            ),
+          ),
       );
   }
   
