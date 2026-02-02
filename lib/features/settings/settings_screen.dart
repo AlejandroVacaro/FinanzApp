@@ -594,10 +594,24 @@ void _showDeleteDialog(BuildContext context) {
                     child: TextField(
                       controller: startController,
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Fecha Inicio", 
-                        border: OutlineInputBorder(),
-                        suffixIcon: Icon(Icons.calendar_today, size: 16),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.today, size: 18, color: Colors.blue),
+                              tooltip: "Hoy",
+                              onPressed: () {
+                                setState(() {
+                                  startDate = DateTime.now();
+                                  startController.text = DateFormat('dd/MM/yyyy').format(startDate!);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -605,6 +619,7 @@ void _showDeleteDialog(BuildContext context) {
                           initialDate: startDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
+                          locale: const Locale('es', 'ES'),
                           builder: (context, child) {
                             return Theme(
                               data: Theme.of(context).copyWith(
@@ -634,10 +649,24 @@ void _showDeleteDialog(BuildContext context) {
                     child: TextField(
                       controller: endController,
                       readOnly: true,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: "Fecha Fin", 
-                        border: OutlineInputBorder(),
-                         suffixIcon: Icon(Icons.calendar_today, size: 16),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.today, size: 18, color: Colors.blue),
+                              tooltip: "Hoy",
+                              onPressed: () {
+                                setState(() {
+                                  endDate = DateTime.now();
+                                  endController.text = DateFormat('dd/MM/yyyy').format(endDate!);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                       onTap: () async {
                         final picked = await showDatePicker(
@@ -645,6 +674,7 @@ void _showDeleteDialog(BuildContext context) {
                           initialDate: endDate ?? startDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
+                          locale: const Locale('es', 'ES'),
                            builder: (context, child) {
                             return Theme(
                               data: Theme.of(context).copyWith(

@@ -23,12 +23,11 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _isLoading = false;
-  String _searchQuery = ""; // Renamed from _searchText for consistency
+  String _searchQuery = ""; 
   String _filterSource = "Todos";
+  String _filterCategory = "Todos"; // Filtro de Rubro
 
   // --- LÓGICA DE IMPORTACIÓN ---
-
-   // --- LÓGIC DE IMPORTACIÓN MEJORADA ---
 
   Future<void> _pickCSV() async {
     final config = Provider.of<ConfigProvider>(context, listen: false);
@@ -70,22 +69,43 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             bool isBankAccount = false;
             String sourceAccount = "Desconocido";
             String fileCurrency = "UYU"; // Default
+            DateTime? cutoffDate; // FECHA DE CORTE
 
-            // Análisis de primeras líneas para detectar tipo
+            // Análisis de primeras líneas para detectar tipo y METADATA
             for (int i = 0; i < rows.length && i < 20; i++) {
               String rowStr = rows[i].join(" ").toLowerCase();
               
               if (rowStr.contains("visa soy santander") || rowStr.contains("tarjeta de crédito") || (rowStr.contains("importe original") && rowStr.contains("dólares"))) {
                 isCreditCard = true;
                 sourceAccount = "Visa Platinum";
-                break;
+                // No break yet, might find cutoff date later or in same pass
               }
               if (rowStr.contains("ca personal") || (rowStr.contains("referencia") && rowStr.contains("concepto") && rowStr.contains("saldos"))) {
                 isBankAccount = true;
                 if (rowStr.contains("moneda usd")) fileCurrency = "USD";
                 if (rowStr.contains("moneda uyu")) fileCurrency = "UYU";
                 sourceAccount = "Caja Ahorro $fileCurrency";
-                break;
+              }
+              
+              // Buscar Fecha de Corte (Solo relevante para TC, pero buscamos igual)
+              if (isCreditCard && rowStr.contains("fecha de corte")) {
+                   // Asumimos formato vertical u horizontal cercano
+                   // Buscamos en la fila actual el índice de "Fecha de corte"
+                   List<String> rowRaw = rows[i].map((e) => e.toString().toLowerCase()).toList();
+                   int idxCutoff = rowRaw.indexWhere((cell) => cell.contains("fecha de corte"));
+                   
+                   if (idxCutoff != -1) {
+                       // Check next row at same index (Vertical Key-Value)
+                       if (i + 1 < rows.length) {
+                           String potentialDate = rows[i+1][idxCutoff].toString();
+                           try {
+                               cutoffDate = DateFormat("dd/MM/yyyy").parse(potentialDate);
+                               debugPrint("Fecha de corte detectada: $cutoffDate");
+                           } catch (e) {
+                               debugPrint("Error parseando fecha de corte: $e");
+                           }
+                       }
+                   }
               }
             }
 
@@ -139,6 +159,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 try {
                    date = DateFormat("dd/MM/yyyy").parse(dateStr);
                 } catch (_) { continue; }
+                
+                // OVERRIDE DATE IF CUTOFF EXISTS AND IS TC
+                if (isCreditCard && cutoffDate != null) {
+                    date = cutoffDate;
+                }
 
                 String description = "";
                 double amount = 0.0;
@@ -276,7 +301,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 if (amount == 0 && valOriginal == 0) continue;
 
                 // === LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ===
-                // === LÓGICA DE CATEGORIZACIÓN AUTOMÁTICA ===
                 String? catId = config.getCategoryIdForDescription(description);
                 String finalCategory = "Categoría no asignada";
                 if (catId != null) { 
@@ -285,7 +309,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
                 newTransactions.add(Transaction(
                     id: const Uuid().v4(), // FORCE UNIQUE ID
-                    date: date,
+                    date: date, // Will be cutoffDate if set
                     description: description,
                     category: finalCategory,
                     amount: amount,
@@ -457,40 +481,44 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Widget _buildTable(List<Transaction> allTxs) {
+      final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+      
       // 1. Filtrado
       List<Transaction> filteredTxs = allTxs;
       
       if (_searchQuery.isNotEmpty) {
         filteredTxs = allTxs.where((t) {
-          return t.description.toLowerCase().contains(_searchQuery.toLowerCase()) || 
-                 t.category.toLowerCase().contains(_searchQuery.toLowerCase());
+          return t.description.toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
         
-        // 2. Ordenamiento: Cuando Busco = Más VIEJOS arriba (Ascendente)
         filteredTxs.sort((a, b) => a.date.compareTo(b.date));
       } else {
-         // Default (No Search) = Más NUEVOS arriba (Descendente)
          filteredTxs.sort((a, b) => b.date.compareTo(a.date));
       }
 
-      // Apply source filter after search/sort
+      // Apply source filter
       filteredTxs = filteredTxs.where((tx) {
          return _filterSource == "Todos" || tx.sourceAccount == _filterSource;
       }).toList();
+      
+      // Apply category filter
+      filteredTxs = filteredTxs.where((tx) {
+         return _filterCategory == "Todos" || tx.category == _filterCategory;
+      }).toList();
 
       final sources = ["Todos", ...allTxs.map((e) => e.sourceAccount).toSet().toList()];
+      final categories = ["Todos", ...configProvider.categories.map((c) => c.name).toSet().toList()..sort()];
 
       return Column(
           children: [
               // Barra de Buscador y Filtros
               Container(
-                // color: const Color(0xFF1F2937), // Not strictly needed if transparent
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     // Buscador
                     Expanded(
-                      flex: 3,
+                      flex: 4, 
                       child: TextField(
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -508,7 +536,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         onChanged: (val) => setState(() => _searchQuery = val),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     // Filtro de Origen
                     Expanded(
                       flex: 2,
@@ -523,8 +551,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             value: sources.contains(_filterSource) ? _filterSource : "Todos",
                             isExpanded: true,
                             dropdownColor: const Color(0xFF374151),
-                            icon: const Icon(Icons.filter_list, color: Colors.white70),
-                            style: const TextStyle(color: Colors.white),
+                            icon: const Icon(Icons.account_balance_wallet, color: Colors.white70, size: 18), // Icon hint
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
                             items: sources.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
                             onChanged: (val) {
                               if (val != null) setState(() => _filterSource = val);
@@ -533,9 +561,165 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    // Filtro de Rubro (Categoría)
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374151),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: categories.contains(_filterCategory) ? _filterCategory : "Todos",
+                            isExpanded: true,
+                            dropdownColor: const Color(0xFF374151),
+                            icon: const Icon(Icons.category, color: Colors.white70, size: 18), // Icon hint
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (val) {
+                              if (val != null) setState(() => _filterCategory = val);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
+
+              // Header Tabla
+              Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1F2937),
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16))
+                    ),
+                    child: Row(
+                      children: [
+                        _buildHeaderCell("FECHA", flex: 2),
+                        _buildHeaderCell("DESCRIPCIÓN", flex: 4), // Reduced from 5
+                        _buildHeaderCell("RUBRO", flex: 3, alignment: Alignment.center), // Increased from 2 to 3
+                        _buildHeaderCell("CUENTA", flex: 3),
+                        _buildHeaderCell("IMPORTE", flex: 2, alignment: Alignment.centerRight),
+                      ],
+                    ),
+                  ),
+              
+              // Lista de Movimientos
+              Expanded(
+                  child: ListView.separated(
+                      reverse: false, // Standard Top-Down view
+                      itemCount: filteredTxs.length,
+                      separatorBuilder: (_,__) => const Divider(height: 1, color: Colors.white10),
+                      itemBuilder: (context, i) {
+                          final tx = filteredTxs[i];
+                          final amountColor = tx.amount >= 0 ? AppColors.income : AppColors.expense;
+                          
+                          return _HoverRow(
+                              child: Row(
+                                  children: [
+                                      // Date
+                                      Expanded(
+                                        flex: 2, 
+                                        child: Text(
+                                          DateFormat("dd/MM/yy").format(tx.date), 
+                                          textAlign: TextAlign.left,
+                                          style: const TextStyle(fontSize: 13, color: Colors.white70),
+                                        )
+                                      ),
+                                      // Description
+                                      Expanded(
+                                        flex: 4, // Match Header
+                                        child: Tooltip(
+                                          message: tx.description,
+                                          child: Text(
+                                            tx.description, 
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 13, color: Colors.white),
+                                          ),
+                                        )
+                                      ),
+                                      // Category (Editable)
+                                      Expanded(flex: 3, child: // Match Header
+                                        InkWell(
+                                          onTap: () => _showCategoryEditDialog(context, tx),
+                                          child: Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), 
+                                              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      tx.category, 
+                                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal, color: Colors.white), 
+                                                      textAlign: TextAlign.center,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  const Icon(Icons.edit, size: 10, color: Colors.grey)
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      ),
+                                      // Account
+                                      Expanded(
+                                        flex: 3, 
+                                        child: Text(
+                                          tx.sourceAccount, 
+                                          textAlign: TextAlign.left,
+                                          style: const TextStyle(fontSize: 12, color: Colors.white60),
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      ),
+                                      // Amount - Right Aligned
+                                      Expanded(
+                                        flex: 2, 
+                                        child: Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Tooltip(
+                                              message: tx.currency == 'USD' 
+                                                  ? "En Pesos: \$U ${tx.amountUYU.toStringAsFixed(2)}"
+                                                  : "En Dólares: U\$S ${tx.amountUSD.toStringAsFixed(2)}",
+                                              child: Text(
+                                                  "${tx.currency == 'USD' ? 'U\$S' : '\$U'} ${tx.amount.toStringAsFixed(2)}", 
+                                                  style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                                  textAlign: TextAlign.right,
+                                              ),
+                                          ),
+                                        )
+                                      ),
+                                  ],
+                              ),
+                          );
+                      },
+                  ),
+              ),
+          ],
+      );
+  }
+
+  Widget _buildHeaderCell(String text, {int flex = 1, Alignment alignment = Alignment.centerLeft}) {
+    return Expanded(
+      flex: flex,
+      child: Align(
+        alignment: alignment,
+        child: Text(
+          text,
+          textAlign: alignment == Alignment.center ? TextAlign.center : (alignment == Alignment.centerRight ? TextAlign.right : TextAlign.left),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+        ),
+      ),
+    );
+  }
+}
 
               // Header Tabla
               Container(

@@ -41,6 +41,8 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 class FinanzApp extends StatelessWidget {
   const FinanzApp({super.key});
 
@@ -48,7 +50,15 @@ class FinanzApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FinanzApp',
-      locale: const Locale('es'),
+      locale: const Locale('es', 'ES'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', 'ES'),
+      ],
       scrollBehavior: MyCustomScrollBehavior(),
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
