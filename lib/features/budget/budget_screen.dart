@@ -295,6 +295,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                  _buildFixedCell("MARGEN", isBold: true, bg: const Color(0xFF111827), textColor: Colors.lightBlueAccent),
                                  
                                  _buildFixedCell("RESULTADO", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white70),
+                                 _buildFixedCell("SALDO FINAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
                               ],
                             ),
                           ),
@@ -365,6 +366,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                        final res = finalResults[m]!;
                                        final color = res >= 0 ? Colors.greenAccent : Colors.redAccent;
                                        return _buildDisplayCell(res, cellWidth, bg: const Color(0xFF111827), textColor: color, isBold: true);
+                                   }).toList()),
+
+                                   // Saldo Final Row
+                                   Row(children: _months.map((m) {
+                                       final finalBal = initialBalances[m]! + finalResults[m]!;
+                                       return _buildDisplayCell(finalBal, cellWidth, bg: const Color(0xFF1F2937), textColor: Colors.white, isBold: true);
                                    }).toList()),
                                 ],
                               ),

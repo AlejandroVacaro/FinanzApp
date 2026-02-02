@@ -66,42 +66,58 @@ class FinanzApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _isInit = false;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: AuthService().userChanges,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-           return const Scaffold(
+        // 1. Auth Loading or App Init Loading
+        if (snapshot.connectionState == ConnectionState.waiting || (_isInit && snapshot.hasData == false)) {
+             return const Scaffold(
               backgroundColor: Color(0xFF111827),
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(child: CircularProgressIndicator(color: AppColors.primaryPurple)),
            );
         }
 
         if (snapshot.hasData) {
           final uid = snapshot.data!.uid;
           
-          // Initialize providers with UID
-          // Using addPostFrameCallback to avoid state setting during build
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-             Provider.of<TransactionsProvider>(context, listen: false).init(uid);
-             Provider.of<ConfigProvider>(context, listen: false).init(uid);
-             Provider.of<BudgetProvider>(context, listen: false).init(uid);
-          });
+          if (!_isInit) {
+             // Initialize providers once
+             WidgetsBinding.instance.addPostFrameCallback((_) async {
+                 // Initialize
+                 Provider.of<TransactionsProvider>(context, listen: false).init(uid);
+                 Provider.of<ConfigProvider>(context, listen: false).init(uid);
+                 Provider.of<BudgetProvider>(context, listen: false).init(uid);
+                 
+                 // Fake delay for smooth spinner UX (optional, but requested "pon un spinner")
+                 await Future.delayed(const Duration(milliseconds: 800));
+                 
+                 if (mounted) setState(() => _isInit = true);
+             });
+             
+             // Show spinner while initializing
+             return const Scaffold(
+                backgroundColor: Color(0xFF111827),
+                body: Center(child: CircularProgressIndicator(color: AppColors.accentCyan)),
+             );
+          }
 
           return const MainLayout();
         } else {
-           // Clear providers
-           WidgetsBinding.instance.addPostFrameCallback((_) {
-             Provider.of<TransactionsProvider>(context, listen: false).clear();
-             Provider.of<ConfigProvider>(context, listen: false).clear();
-             Provider.of<BudgetProvider>(context, listen: false).clear();
-          });
-
-          return const LoginScreen();
+           // Not logged in
+           return const LoginScreen();
         }
       },
     );

@@ -124,7 +124,7 @@ class CustomSidebar extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Usuario', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text('Alejandro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           Text('Pro Member', style: TextStyle(color: AppColors.textGrey, fontSize: 12)),
                         ],
                       ),

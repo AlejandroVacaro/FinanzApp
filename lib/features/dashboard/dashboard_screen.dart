@@ -511,49 +511,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final sortedEntries = catSums.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
       final topEntries = sortedEntries.take(10).toList(); // Show more entries if space permits, or stick to top 5
 
+
+      
+      // Determine what to show in center
+      String centerText1 = "";
+      String centerText2 = "";
+      Color centerColor = Colors.white;
+
+      if (touchedIndex != -1 && touchedIndex < topEntries.length) {
+          final entry = topEntries[touchedIndex];
+          final percentage = totalSum > 0 ? (entry.value / totalSum * 100) : 0;
+          centerText1 = entry.key; // Category Name
+          centerText2 = "${percentage.toStringAsFixed(1)}%"; // Percentage
+          
+          final index = topEntries.indexOf(entry);
+          centerColor = Colors.primaries[index % Colors.primaries.length];
+      }
+
       return _buildTile(
           title,
-          PieChart(
-            PieChartData(
-              pieTouchData: PieTouchData(
-                touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                  setState(() {
-                    if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
-                      onTouch(-1);
-                      return;
+          Stack(
+            alignment: Alignment.center,
+            children: [
+               PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                          onTouch(-1);
+                          return;
+                        }
+                        onTouch(pieTouchResponse.touchedSection!.touchedSectionIndex);
+                      });
                     }
-                    onTouch(pieTouchResponse.touchedSection!.touchedSectionIndex);
-                  });
-                }
+                  ),
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 2, // Slight gap for better hover separation
+                  centerSpaceRadius: 40,
+                  sections: topEntries.map((e) {
+                      final isTouched = topEntries.indexOf(e) == touchedIndex;
+                      final radius = isTouched ? 50.0 : 45.0; // Subtle grow
+                      final index = topEntries.indexOf(e);
+                      final color = Colors.primaries[index % Colors.primaries.length];
+                      
+                      return PieChartSectionData(
+                          color: color.withOpacity(isTouched ? 1.0 : 0.8),
+                          value: e.value,
+                          showTitle: false, // HIDE STATIC LABELS
+                          radius: radius,
+                      );
+                  }).toList(),
+                ),
               ),
-              borderData: FlBorderData(show: false),
-              sectionsSpace: 0,
-              centerSpaceRadius: 40,
-              sections: topEntries.map((e) {
-                  final isTouched = topEntries.indexOf(e) == touchedIndex;
-                  final fontSize = isTouched ? 16.0 : 12.0;
-                  final radius = isTouched ? 60.0 : 50.0;
-                  final index = topEntries.indexOf(e);
-                  final color = Colors.primaries[index % Colors.primaries.length];
-                  
-                  final percentage = totalSum > 0 ? (e.value / totalSum * 100) : 0;
-                  
-                  return PieChartSectionData(
-                      color: color,
-                      value: e.value,
-                      title: "${percentage.toStringAsFixed(1)}%",
-                      radius: radius,
-                      titlePositionPercentageOffset: 1.4, // Move labels outside
-                      titleStyle: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        
-                      ),
-                  );
-              }).toList(),
-            ),
-          ),
+              // Center Info
+              if (centerText1.isNotEmpty)
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                       Text(centerText1, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                       Text(centerText2, style: TextStyle(color: centerColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  )
+            ],
+          )
       );
   }
   
