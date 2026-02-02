@@ -192,7 +192,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
                         idxBalance = headers.indexWhere((h) => h.contains("saldo"));
                         
-                        if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion") || h.contains("referencia"));
+                        if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion")); // "Referencia" removed to avoid numeric codes
                     }
 
                     // 2. Si falló header, usar heurística de "Última columna numérica" en las primeras filas de datos
@@ -214,9 +214,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                          }
                     }
 
-                    // 3. Definir Debit y Credit relativos a Balance
-                    // Estructura BROU/Standard: [Debit] [Credit] [Balance]
-                    if (idxBalance != -1 && idxBalance >= 2) {
+                    // 3. Definir Columnas
+                    // Prioridad: Usar la Descripción como ancla si fue encontrada.
+                    // Usuario: "los valores que siguen enseguida a la derecha de la descripción son los débitos, los que siguen son los créditos"
+                    if (idxDesc != -1) {
+                        idxDebit = idxDesc + 1;
+                        idxCredit = idxDesc + 2;
+                    } 
+                    // Fallback a Saldo si no tenemos Desc (raro)
+                    else if (idxBalance != -1 && idxBalance >= 2) {
                         idxCredit = idxBalance - 1;
                         idxDebit = idxBalance - 2;
                     } else if (idxBalance != -1 && idxBalance == 1) {
