@@ -541,13 +541,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return PieChartSectionData(
                       color: color,
                       value: e.value,
-                      title: isTouched ? "${e.key}\n${percentage.toStringAsFixed(1)}%" : "",
+                      title: "${percentage.toStringAsFixed(1)}%",
                       radius: radius,
+                      titlePositionPercentageOffset: 1.4, // Move labels outside
                       titleStyle: TextStyle(
                           fontSize: fontSize,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          shadows: const [Shadow(color: Colors.black, blurRadius: 2)],
+                        
                       ),
                   );
               }).toList(),
