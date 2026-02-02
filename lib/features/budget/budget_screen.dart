@@ -422,7 +422,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           _buildFixedCell(title, isBold: true, bg: color.withOpacity(0.1), textColor: color), // Header
            ...cats.map((c) => Container(
               height: 45, width: 180,
               padding: const EdgeInsets.only(left: 24),
@@ -430,6 +429,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[900]!))),
               child: Text(c.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white70)),
            )), 
+           _buildFixedCell(title, isBold: true, bg: color.withOpacity(0.1), textColor: color), // Header/Total at bottom
         ],
       );
   }
