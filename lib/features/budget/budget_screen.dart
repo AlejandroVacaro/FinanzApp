@@ -285,7 +285,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                  // Saldo Inicial
-                                 _buildFixedCell("SALDO INICIAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white70),
+                                 _buildFixedCell("SALDO INICIAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
                                  _buildFixedPlaceholderForSection("INGRESOS", incomeCats.length, incomeCats, Colors.green),
                                  _buildFixedPlaceholderForSection("EGRESOS", expenseCats.length, expenseCats, Colors.red),
                                  _buildFixedPlaceholderForSection("AHORRO", savingsCats.length, savingsCats, Colors.orange),
@@ -318,7 +318,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                         onDoubleTap: () => _showInitialBalanceDialog(context, m, budgetProvider),
                                         child: Stack(
                                           children: [
-                                            _buildDisplayCell(initialBalances[m]!, cellWidth, bg: const Color(0xFF111827), textColor: Colors.white70, isBold: true),
+                                            _buildDisplayCell(initialBalances[m]!, cellWidth, bg: const Color(0xFF111827), textColor: Colors.white, isBold: true),
                                             if (isManual)
                                               Positioned(
                                                 top: 2, left: 2,
@@ -498,7 +498,15 @@ class _BudgetScreenState extends State<BudgetScreen> {
           Row(
             children: months.map((m) {
                double total = 0.0;
-               for (var c in cats) total += budgetProvider.getAmount(c.id, m);
+               final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
+               
+               for (var c in cats) {
+                   if (isPast) {
+                       total += _getRealSum(txProvider.transactions, c.name, m);
+                   } else {
+                       total += budgetProvider.getAmount(c.id, m);
+                   }
+               }
                return Container(
                  width: cellWidth,
                  height: 45,
