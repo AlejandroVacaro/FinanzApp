@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'providers/transactions_provider.dart';
@@ -40,8 +41,6 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.mouse,
       };
 }
-
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 class FinanzApp extends StatelessWidget {
   const FinanzApp({super.key});
