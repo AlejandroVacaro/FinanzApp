@@ -187,10 +187,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     int idxCredit = -1;
                     int idxDesc = -1;
 
+                    int headerCount = 0; // Para detectar desfases
+
                     // 1. Buscar Headers
                     if (dataStartIndex > 0) {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
-                        
+                        headerCount = headers.length; // Guardamos largo esperado
+
                         idxBalance = headers.indexWhere((h) => h.contains("saldo") || h.contains("balance"));
                         if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion"));
                         
@@ -239,9 +242,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     }
 
                     // 4. Extracción
-                    // Descripción
+                    
+                    // CALCULAR OFFSET (Si la fila es más larga que el header, hay columnas extra)
+                    int offset = 0;
+                    if (headerCount > 0 && row.length > headerCount) {
+                         offset = row.length - headerCount;
+                    }
+
+                    // Descripción (Suele ser stable, pero si usamos índice bajo asumimos que no hay offset a la izquierda)
+                    // Si el offset es por columnas insertadas después de la descripción, idxDesc es seguro.
                     if (idxDesc == -1) {
-                        // Buscar la columna de texto más larga a la izquierda de los números
+                        // Buscar la columna de texto más larga a la izquierda de los números (ajustado?)
                          int limitCol = (idxDebit != -1) ? idxDebit : row.length;
                          int maxLen = 0;
                          for(int c=0; c < limitCol; c++) {
@@ -258,8 +269,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     double debito = 0.0;
                     double credito = 0.0;
 
-                    if (idxDebit != -1 && row.length > idxDebit) debito = _parseMontoRaw(row[idxDebit]);
-                    if (idxCredit != -1 && row.length > idxCredit) credito = _parseMontoRaw(row[idxCredit]);
+                    // Aplicamos OFFSET a los índices de columnas numéricas (que suelen estar a la derecha)
+                    int actualIdxDebit = (idxDebit != -1) ? idxDebit + offset : -1;
+                    int actualIdxCredit = (idxCredit != -1) ? idxCredit + offset : -1;
+
+                    if (actualIdxDebit != -1 && row.length > actualIdxDebit) debito = _parseMontoRaw(row[actualIdxDebit]);
+                    if (actualIdxCredit != -1 && row.length > actualIdxCredit) credito = _parseMontoRaw(row[actualIdxCredit]);
 
                     // Lógica BROU / Bancaria: Débito y Crédito separados y positivos
                     if (debito != 0 && credito == 0) {
