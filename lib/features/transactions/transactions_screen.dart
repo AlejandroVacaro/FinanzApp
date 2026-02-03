@@ -187,18 +187,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     int idxCredit = -1;
                     int idxDesc = -1;
 
-                    // 1. Buscar Header "Saldos" o "Saldo" o "Balance" para encontrar columna pivote
+                    // 1. Buscar Headers
                     if (dataStartIndex > 0) {
                         List<String> headers = rows[dataStartIndex - 1].map((e) => e.toString().toLowerCase()).toList();
-                        idxBalance = headers.indexWhere((h) => h.contains("saldo"));
                         
-                        if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion")); // "Referencia" removed to avoid numeric codes
+                        idxBalance = headers.indexWhere((h) => h.contains("saldo") || h.contains("balance"));
+                        if (idxDesc == -1) idxDesc = headers.indexWhere((h) => h.contains("concepto") || h.contains("descripcion"));
+                        
+                        // PRIORIDAD: Detección explícita de Débito/Crédito
+                        idxDebit = headers.indexWhere((h) => h.contains("débito") || h.contains("debito") || h.contains("retiro"));
+                        idxCredit = headers.indexWhere((h) => h.contains("crédito") || h.contains("credito") || h.contains("deposito"));
                     }
 
-                    // 2. Si falló header, usar heurística de "Última columna numérica" en las primeras filas de datos
+                    // 2. Si falló header de Saldo, heurística numérica
                     if (idxBalance == -1) {
-                         // Escanear filas de datos para encontrar la estructura común
-                         // Asumimos que "Saldo" es la última columna numérica relevante a la derecha.
                          for (int k = dataStartIndex; k < rows.length && k < dataStartIndex + 5; k++) {
                              var sampleRow = rows[k];
                              List<int> nums = [];
@@ -208,44 +210,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                  }
                              }
                              if (nums.isNotEmpty) {
-                                 idxBalance = nums.last; // Asumimos saldo al final
-                                 break; // Encontrado un candidato
+                                 idxBalance = nums.last; 
+                                 break; 
                              }
                          }
                     }
 
-                    // 3. Definir Columnas
-                    // Prioridad: Usar la Descripción como ancla si fue encontrada.
-                    // Usuario: "los valores que siguen enseguida a la derecha de la descripción son los débitos, los que siguen son los créditos"
-                    if (idxDesc != -1) {
-                        idxDebit = idxDesc + 1;
-                        idxCredit = idxDesc + 2;
-                    } 
-                    // Fallback a Saldo si no tenemos Desc (raro)
-                    else if (idxBalance != -1 && idxBalance >= 2) {
-                        idxCredit = idxBalance - 1;
-                        idxDebit = idxBalance - 2;
-                    } else if (idxBalance != -1 && idxBalance == 1) {
-                         // Caso raro: [Amount, Balance]? -> Asumimos Columna única
-                         idxDebit = 0;
-                    } else {
-                         // Fallback absoluto si no hallamos nada (Estructura fija según screenshot usuario)
-                         // Screenshot muestra: ..., Descripción (Col 2), Débito (Col 3), Crédito (Col 4), Saldos (Col 5) - (0-indexed? No, screenshot muestra headers)
-                         // Excel screenshot: Col 4 (Saldos), Col 5 (Debit?? No, wait)
-                         // Re-reading user request: "la primera columna de número son los débitos, la segunda los créditos, la tercera el saldo"
-                         // Entonces order: Debit, Credit, Balance.
-                         // Esto coincide con idxCredit = idxBalance -1, idxDebit = idxBalance - 2.
-                         
-                         // Si falla detección dinámica, usemos índices fijos basados en la observación del usuario si tenemos suficientes columnas
-                         if (row.length >= 6) { 
-                             // Asumiendo Concepto en col 2 o 3.
-                             // User says: "la primera columna de número son los débitos"
-                             // Buscamos primera columna numérica available? NO, eso fallaba antes (salary bug).
-                             // We MUST rely on fixed positions relative to end or specific indices if headers fail.
-                             idxDebit = row.length - 3; // Antepenúltima
-                             idxCredit = row.length - 2; // Penúltima
-                             // This is risky. Let's stick to strict relative if Balance found, or search headers.
-                         }
+                    // 3. Definir Columnas (Fallback si no hay headers explícitos)
+                    if (idxDebit == -1 || idxCredit == -1) {
+                        if (idxDesc != -1) {
+                            // Asumimos orden estándar: Desc, Debito, Credito
+                            if (idxDebit == -1) idxDebit = idxDesc + 1;
+                            if (idxCredit == -1) idxCredit = idxDesc + 2;
+                        } 
+                        else if (idxBalance != -1 && idxBalance >= 2) {
+                            // Fallback relativo al Saldo
+                            if (idxCredit == -1) idxCredit = idxBalance - 1;
+                            if (idxDebit == -1) idxDebit = idxBalance - 2;
+                        } else if (idxBalance != -1 && idxBalance == 1) {
+                             idxDebit = 0; // Caso raro
+                        } else {
+                             // Fallback absoluto
+                             if (row.length >= 6) { 
+                                 idxDebit = row.length - 3;
+                                 idxCredit = row.length - 2;
+                             }
+                        }
                     }
 
                     // 4. Extracción

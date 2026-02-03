@@ -450,11 +450,15 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
                     title: Text(rule.keyword, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Row(
                       children: [
-                        const Text("Asigna a: "),
-                        Chip(
-                          label: Text(cat?.name ?? "N/A", style: const TextStyle(fontSize: 10, color: Colors.black87)), 
-                          backgroundColor: Colors.grey[200], 
-                          visualDensity: VisualDensity.compact
+                        const Text("Asigna a: ", style: TextStyle(color: Colors.white70)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), 
+                          decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                          child: Text(
+                            cat?.name ?? "N/A", 
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal, color: Colors.white), 
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
