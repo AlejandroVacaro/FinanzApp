@@ -409,7 +409,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       final txProvider = Provider.of<TransactionsProvider>(context, listen: false);
 
       String selectedCategory = tx.category;
-      String description = tx.description;
+      String matchText = tx.description; // Texto usado para la regla (editable)
       bool saveRule = false;
       
       final categories = configProvider.categories.map((e) => e.name).toList()..sort();
@@ -423,22 +423,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       title: const Text("Editar Movimiento", style: TextStyle(color: Colors.white)),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. Editable Description
+                          // 1. Read-Only Original Description
+                          const Text("Movimiento Original:", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(
+                            tx.description,
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // 2. Editable Match Text (for Rule)
                           TextField(
-                            controller: TextEditingController(text: description),
+                            controller: TextEditingController(text: matchText),
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
-                              labelText: "Descripción",
+                              labelText: "Texto para coincidencia (Regla)",
                               labelStyle: TextStyle(color: Colors.white70),
+                              hintText: "Ej: NETFLIX",
+                              hintStyle: TextStyle(color: Colors.white30),
                               enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
                             ),
-                            onChanged: (val) => description = val,
+                            onChanged: (val) => matchText = val,
                           ),
                           const SizedBox(height: 16),
                           
-                          // 2. Category Dropdown
+                          // 3. Category Dropdown
                           DropdownButtonFormField<String>(
                               value: categories.contains(selectedCategory) ? selectedCategory : null,
                               dropdownColor: const Color(0xFF374151),
@@ -457,11 +469,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // 3. Save Rule Checkbox
+                          // 4. Save Rule Checkbox
                           CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text("Guardar asignación automática", style: TextStyle(color: Colors.white70, fontSize: 13)),
-                            subtitle: const Text("Se usará esta descripción para asignar futuros movimientos.", style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            subtitle: const Text("Se usará el 'Texto para coincidencia' para asignar todo futuro movimiento similar.", style: TextStyle(color: Colors.grey, fontSize: 11)),
                             value: saveRule, 
                             onChanged: (val) => setState(() => saveRule = val ?? false),
                             activeColor: Colors.blueAccent,
@@ -480,57 +492,23 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               onPressed: () async {
                                   Navigator.pop(ctx); // Close Dialog first
 
-                                  // 1. Update Transaction (Category & Description)
-                                  // Warning: description update for transaction wasn't explicitly asked but implied by "texto editable".
-                                  // However, TransactionsProvider doesn't have updateTransactionDescription?
-                                  // Let's check provider usage in the original code. It uses updateTransactionCategory.
-                                  // I might need to update the provider or just pass the description if the provider supports full update? 
-                                  // Looking at provider code: `await _firestoreService.updateTransaction(_uid!, updatedTx);` 
-                                  // It uses copyWith and saves. So I can update description too manually here.
+                                  // 1. Update Transaction (Category ONLY, Description stays original)
+                                  // We explicitly allow the user to modify the textual match for the rule, 
+                                  // BUT the user requested NOT to edit the movement description itself.
                                   
-                                  final newTx = tx.copyWith(category: selectedCategory, description: description);
-                                  // Transaction provider currently has `updateTransactionCategory`. 
-                                  // Let's assume WE ONLY update category via that method or I need to update the method?
-                                  // Provide code showed `updateTransactionCategory(Transaction tx, String newCategory)`.
-                                  // I should probably manually call firestore update or modify the provider to support generic update.
-                                  // ACTUALLY, for safety, I will stick to what the provider offers or do a quick update? 
-                                  // The user wants "texto del movimiento editable". 
-                                  // I'll assume they want the transaction description updated too.
-                                  // Since I can't easily change the provider method signature without breaking other things (maybe), 
-                                  // I'll just check if I can use the same method but passing a modified TX? 
-                                  // `updateTransactionCategory` takes `Transaction tx` and `String newCategory`.
-                                  // It does `tx.copyWith(category: newCategory)`. It ignores my description change if I pass old tx.
-                                  
-                                  // FIX: I should use a generic update or call firestore directly? 
-                                  // Better: Expand the provider method or add a new one? 
-                                  // Or just modify the provider method to take the whole updated transaction?
-                                  // Wait, `updateTransactionCategory` implementation:
-                                  /*
-                                  Future<void> updateTransactionCategory(Transaction tx, String newCategory) async {
-                                      if (_uid == null) return;
-                                      final updatedTx = tx.copyWith(category: newCategory);
-                                      await _firestoreService.updateTransaction(_uid!, updatedTx);
-                                  }
-                                  */
-                                  // It overwrites my description change. 
-                                  // I will create a new method in this file to handle the update properly or just modify the provider in next step?
-                                  // I'll modify the provider in the next step to `updateTransaction` generic.
-                                  // For now, I will invoke a hypothetical `updateTransaction` or just `updateTransactionCategory` and fix it in provider.
-                                  // Actually, I can just use the firestore service directly? No, keep architecture.
-                                  
-                                  // Let's assumme I will rename `updateTransactionCategory` to `updateTransaction` in Provider.
+                                  final newTx = tx.copyWith(category: selectedCategory); // Description unchanged
                                   await txProvider.updateTransaction(newTx); 
 
-                                  // 2. Save Rule Logic
+                                  // 2. Save Rule Logic using matchText
                                   Category? catObj = configProvider.categories.cast<Category?>().firstWhere(
                                       (c) => c?.name == selectedCategory, orElse: () => null
                                   );
                                   
-                                  if (saveRule && catObj != null) {
-                                      configProvider.addRule(description, catObj.id);
+                                  if (saveRule && catObj != null && matchText.trim().isNotEmpty) {
+                                      configProvider.addRule(matchText, catObj.id);
                                       
                                       if (context.mounted) {
-                                          _showRetroactiveDialog(context, description, selectedCategory);
+                                          _showRetroactiveDialog(context, matchText, selectedCategory);
                                       }
                                   }
                               }
