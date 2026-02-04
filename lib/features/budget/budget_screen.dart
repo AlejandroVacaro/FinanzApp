@@ -281,11 +281,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                 // Saldo Inicial
-                                 _buildFixedCell("SALDO INICIAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
+
                                  _buildFixedPlaceholderForSection("INGRESOS", incomeCats.length, incomeCats, Colors.green),
                                  _buildFixedPlaceholderForSection("EGRESOS", expenseCats.length, expenseCats, Colors.red),
-                                 _buildFixedCell("SALDO FINAL", isBold: true, bg: const Color(0xFF111827), textColor: Colors.white),
+
 
                                  _buildFixedPlaceholderForSection("AHORRO", savingsCats.length, savingsCats, Colors.orange),
                                  _buildFixedPlaceholderForSection("MOV. PUENTE", transferCats.length, transferCats, Colors.blue),
@@ -306,52 +305,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                   // Saldo Inicial Row
-                                   Row(children: _months.map((m) {
-                                      final isManual = budgetProvider.getManualInitialBalance(m) != null;
-                                      final note = budgetProvider.getInitialBalanceNote(m);
-                                      
-                                      Widget cell = InkWell(
-                                        onTap: () {}, // Double tap needed? User asked for double click. InkWell supports onDoubleTap.
-                                        onDoubleTap: () => _showInitialBalanceDialog(context, m, budgetProvider),
-                                        child: Stack(
-                                          children: [
-                                            _buildDisplayCell(initialBalances[m]!, cellWidth, bg: const Color(0xFF111827), textColor: Colors.white, isBold: true),
-                                            if (isManual)
-                                              Positioned(
-                                                top: 2, left: 2,
-                                                child: Tooltip(
-                                                  message: "Saldo modificado manualmente.\n${note ?? ''}",
-                                                  child: const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 14),
-                                                ),
-                                              )
-                                          ],
-                                        ),
-                                      );
-                                      return SizedBox(width: cellWidth, child: cell);
-                                   }).toList()),
+
                                    
                                    _buildSectionGrid(incomeCats, _months, budgetProvider, txProvider, cellWidth, Colors.green, Colors.greenAccent),
                                    _buildSectionGrid(expenseCats, _months, budgetProvider, txProvider, cellWidth, Colors.red, Colors.redAccent),
                                    
-                                   // Saldo Final Row (After Expenses)
-                                   // User Formula: Initial + Income + Expenses ONLY (Ignore Savings/Bridge/Margin)
-                                   // Note: Expenses are negative in DB/Provider, so we ADD them.
-                                   Row(children: _months.map((m) {
-                                       // Re-calculate local sums to be safe or use pre-calc?
-                                       // We need specific sums for this formula.
-                                       final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
-                                       
-                                       double inc = 0.0; 
-                                       for(var c in incomeCats) inc += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
-                                       
-                                       double exp = 0.0;
-                                       for(var c in expenseCats) exp += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
-                                       
-                                       final finalBal = initialBalances[m]! + inc + exp;
-                                       
-                                       return _buildDisplayCell(finalBal, cellWidth, bg: const Color(0xFF1F2937), textColor: Colors.white, isBold: true);
-                                   }).toList()),
+
 
                                    _buildSectionGrid(savingsCats, _months, budgetProvider, txProvider, cellWidth, Colors.orange, Colors.orangeAccent),
                                    _buildSectionGrid(transferCats, _months, budgetProvider, txProvider, cellWidth, Colors.blue, Colors.blueAccent),

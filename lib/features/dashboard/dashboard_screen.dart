@@ -348,7 +348,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     for (var entry in data.values) {
       for (var key in activeKeys) {
-        final val = entry[key] ?? 0;
+        // Use ABSOLUTE value for scaling since we plot absolute values
+        final val = (entry[key] ?? 0).abs();
         if (first) {
           minVal = val;
           maxVal = val;
@@ -365,7 +366,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double range = maxVal - minVal;
     if (range == 0) range = maxVal.abs() > 0 ? maxVal.abs() : 100;
     
-    return [minVal - (range * 0.1), maxVal + (range * 0.1)];
+    // Add some padding
+    return [minVal > 0 ? minVal * 0.9 : 0, maxVal * 1.1]; 
   }
 
   Widget _buildMainLineChart(List<Transaction> txs) {
@@ -437,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   LineChartBarData _buildLine(List<DateTime> months, Map<DateTime, Map<String, double>> data, String key, Color color) {
       return LineChartBarData(
           spots: months.asMap().entries.map((e) {
-              return FlSpot(e.key.toDouble(), data[e.value]![key] ?? 0);
+              return FlSpot(e.key.toDouble(), (data[e.value]![key] ?? 0).abs());
           }).toList(),
           isCurved: true,
           color: color,
@@ -481,6 +483,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+             ),
+             lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                   getTooltipColor: (_) => Colors.black87,
+                   getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                         return LineTooltipItem(
+                            FormatUtils.formatCurrency(spot.y, 'UYU'), // Format with 2 decimals
+                            const TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold)
+                         );
+                      }).toList();
+                   }
+                )
              ),
              gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => const FlLine(color: Colors.white10, strokeWidth: 1)),
              borderData: FlBorderData(show: false),

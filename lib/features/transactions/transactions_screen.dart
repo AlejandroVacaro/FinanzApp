@@ -400,12 +400,34 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       String val = value.toString().trim();
       if (val.isEmpty) return 0.0;
       
-      // Manejo de formatos numéricos (1.000,00 vs 1000.00)
-      // Asumimos formato español/latino: 1.234,56
-      // Si hay comas, reemplazar puntos (miles) por nada y comas por puntos (decimal)
-      if (val.contains(',')) {
-          val = val.replaceAll('.', '').replaceAll(',', '.');
+      // Heurística de detección de formato
+      bool hasComma = val.contains(',');
+      bool hasDot = val.contains('.');
+
+      if (hasComma && hasDot) {
+          int lastCommaIndex = val.lastIndexOf(',');
+          int lastDotIndex = val.lastIndexOf('.');
+          
+          if (lastCommaIndex > lastDotIndex) {
+              // Formato Español: 1.234,56
+              val = val.replaceAll('.', '').replaceAll(',', '.');
+          } else {
+              // Formato Inglés: 1,234.56
+              val = val.replaceAll(',', '');
+          }
+      } else if (hasComma) {
+          // Solo comas: 1234,56 o 1,234? 
+          // Si hay varias comas, es separador de miles: 1,234,567 -> 1234567
+          // Si hay una sola, chequeamos si es decimal o miles.
+          // Asumimos formato español como default si solo hay comas para decimales simples (15,50)
+          // Pero si es 1,000 suele ser miles.
+          // Complicado sin contexto, pero ante la duda en UY/AR suele ser decimal la coma si no hay puntos.
+          // EXCEPCION: Si parece formato inglés 1,000 (sin decimales) vs 1,5 (1.5).
+          // Por seguridad, reemplazamos por punto.
+          val = val.replaceAll(',', '.');
       }
+      // Si solo tiene puntos (1234.56), Dart lo parsea directo.
+
       return double.tryParse(val) ?? 0.0;
   }
 
