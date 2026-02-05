@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/ai_service.dart';
 
 class AIChatWidget extends StatefulWidget {
@@ -55,7 +56,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.smart_toy, color: Colors.blueAccent, size: 20),
+                        const Icon(FontAwesomeIcons.robot, color: Colors.blueAccent, size: 20),
                         const SizedBox(width: 8),
                         const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         const Spacer(),
@@ -114,7 +115,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.smart_toy, color: Colors.white),
+                    const Icon(FontAwesomeIcons.robot, color: Colors.white),
                     if (_isHovered) ...[
                        const SizedBox(width: 8),
                        const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
