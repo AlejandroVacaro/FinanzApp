@@ -64,13 +64,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
              centerTitle: true,
              scrolledUnderElevation: 0,
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
-            },
-            backgroundColor: Colors.blueAccent,
-            child: const Icon(Icons.smart_toy, color: Colors.white),
-          ),
           body: Column(
             children: [
               Expanded(

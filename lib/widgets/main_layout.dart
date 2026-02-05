@@ -6,6 +6,7 @@ import '../features/transactions/transactions_screen.dart';
 import '../features/budget/budget_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../config/app_theme.dart';
+import '../features/ai_assistant/ai_chat_widget.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -27,33 +28,40 @@ class _MainLayoutState extends State<MainLayout> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      body: Row(
+      body: Stack(
         children: [
-          CustomSidebar(
-            selectedIndex: _selectedIndex,
-            onItemSelected: (index) => setState(() => _selectedIndex = index),
-          ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.05, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<int>(_selectedIndex),
-                child: _screens[_selectedIndex],
+          Row(
+            children: [
+              CustomSidebar(
+                selectedIndex: _selectedIndex,
+                onItemSelected: (index) => setState(() => _selectedIndex = index),
               ),
-            ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.05, 0),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_selectedIndex),
+                    child: _screens[_selectedIndex],
+                  ),
+                ),
+              ),
+            ],
           ),
+          
+          // Global AI Assistant Widget
+          const AIChatWidget(),
         ],
       ),
     );
