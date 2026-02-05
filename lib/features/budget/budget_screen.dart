@@ -328,11 +328,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                             ),
                                             alignment: Alignment.centerRight,
                                             padding: const EdgeInsets.only(right: 12),
-                                            child: _BudgetCell(
-                                              initialValue: margin,
-                                              isReadOnly: false,
-                                              onChanged: (val) => budgetProvider.updateMargin(m, val),
-                                              textColor: Colors.lightBlueAccent,
+                                            child: GestureDetector(
+                                              onDoubleTap: () => _showEditMarginDialog(context, m, margin, budgetProvider),
+                                              child: _BudgetCell(
+                                                value: margin,
+                                                isReadOnly: true, // Edit via dialog
+                                                textColor: Colors.lightBlueAccent,
+                                              ),
                                             ),
                                          );
                                       }).toList(),
@@ -436,13 +438,15 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[900]!), right: BorderSide(color: Colors.grey[900]!))),
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 12),
-                    child: _BudgetCell(
-                      initialValue: displayValue,
-                      isReadOnly: isPast,
-                      onChanged: (val) => budgetProvider.updateAmount(cat.id, m, val),
-                      textColor: isPast ? Colors.white70 : Colors.white,
-                    ),
-                  );
+                      child: GestureDetector(
+                        onDoubleTap: isPast ? null : () => _showEditBudgetDialog(context, cat, m, amount, budgetProvider),
+                        child: _BudgetCell(
+                          value: displayValue,
+                          isReadOnly: true, // Always read-only in grid, edit via dialog
+                          textColor: isPast ? Colors.white70 : Colors.white,
+                        ),
+                      ),
+                    );
 
                   if (isPast) {
                      final diff = realVal - amount;
@@ -564,64 +568,211 @@ class _BudgetScreenState extends State<BudgetScreen> {
       )
     );
   }
+
+  void _showEditBudgetDialog(BuildContext context, Category cat, DateTime month, double currentAmount, BudgetProvider provider) {
+      final TextEditingController amountController = TextEditingController(text: currentAmount == 0 ? "" : FormatUtils.formatValue(currentAmount).replaceAll('.', '').replaceAll(',', '.'));
+      // Using raw value for editing might be better, let's just use toString if simple
+      amountController.text = currentAmount == 0 ? "" : currentAmount.toStringAsFixed(0); // Simple integer editing usually preferred or just string
+      
+      // Replication State
+      bool replicate = false;
+      int frequency = 1; // Every X months
+      bool durForever = true;
+      int durCount = 1;
+
+      showDialog(
+          context: context,
+          builder: (ctx) {
+              return StatefulBuilder(
+                  builder: (context, setState) {
+                      return AlertDialog(
+                          backgroundColor: const Color(0xFF1F2937),
+                          title: Text("Editar Presupuesto: ${cat.name}", style: const TextStyle(color: Colors.white, fontSize: 16)),
+                          content: SingleChildScrollView(
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                      Text("Mes: ${DateFormat('MMMM yyyy', 'es').format(month).capitalize()}", style: const TextStyle(color: Colors.white70)),
+                                      const SizedBox(height: 16),
+                                      TextField(
+                                          controller: amountController,
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          style: const TextStyle(color: Colors.white),
+                                          decoration: const InputDecoration(
+                                              labelText: "Monto",
+                                              labelStyle: TextStyle(color: Colors.white54),
+                                              prefixText: "\$ ",
+                                              prefixStyle: TextStyle(color: Colors.white),
+                                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                                          ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                          children: [
+                                              Checkbox(
+                                                  value: replicate, 
+                                                  onChanged: (v) => setState(() => replicate = v!),
+                                                  activeColor: Colors.blueAccent,
+                                                  side: const BorderSide(color: Colors.white54),
+                                              ),
+                                              const Text("Replicar valor a futuro", style: TextStyle(color: Colors.white)),
+                                          ],
+                                      ),
+                                      if (replicate) ...[
+                                          const SizedBox(height: 16),
+                                          const Text("Frecuencia:", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                              children: [
+                                                  const Text("Cada ", style: TextStyle(color: Colors.white70)),
+                                                  SizedBox(
+                                                      width: 60,
+                                                      child: TextField(
+                                                          keyboardType: TextInputType.number,
+                                                          textAlign: TextAlign.center,
+                                                          style: const TextStyle(color: Colors.white),
+                                                          decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.all(8), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent))),
+                                                          controller: TextEditingController(text: frequency.toString()),
+                                                          onChanged: (v) => frequency = int.tryParse(v) ?? 1,
+                                                      ),
+                                                  ),
+                                                  const Text(" meses", style: TextStyle(color: Colors.white70)),
+                                              ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          const Text("Duración:", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                              children: [
+                                                  Radio<bool>(value: true, groupValue: durForever, onChanged: (v) => setState(() => durForever = v!), activeColor: Colors.blueAccent, fillColor: MaterialStateProperty.all(Colors.blueAccent)),
+                                                  const Text("Siempre", style: TextStyle(color: Colors.white70)),
+                                                  const SizedBox(width: 16),
+                                                  Radio<bool>(value: false, groupValue: durForever, onChanged: (v) => setState(() => durForever = v!), activeColor: Colors.blueAccent, fillColor: MaterialStateProperty.all(Colors.blueAccent)),
+                                                  SizedBox(
+                                                      width: 50,
+                                                      child: TextField(
+                                                          enabled: !durForever,
+                                                          keyboardType: TextInputType.number,
+                                                          textAlign: TextAlign.center,
+                                                          style: TextStyle(color: durForever ? Colors.white24 : Colors.white),
+                                                          decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.all(8), enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent))),
+                                                          controller: TextEditingController(text: durCount.toString()),
+                                                          onChanged: (v) => durCount = int.tryParse(v) ?? 1,
+                                                      ),
+                                                  ),
+                                                  const Text(" veces", style: TextStyle(color: Colors.white70)),
+                                              ],
+                                          ),
+                                      ],
+                                  ],
+                              ),
+                          ),
+                          actions: [
+                              TextButton(child: const Text("Cancelar", style: TextStyle(color: Colors.white54)), onPressed: () => Navigator.pop(ctx)),
+                              ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                                  child: const Text("Guardar", style: TextStyle(color: Colors.white)),
+                                  onPressed: () {
+                                      final val = double.tryParse(amountController.text) ?? 0.0;
+                                      
+                                      // 1. Update Current
+                                      provider.updateAmount(cat.id, month, val);
+                                      
+                                      // 2. Replication Logic
+                                      if (replicate) {
+                                          int count = 0;
+                                          DateTime nextMonth = DateTime(month.year, month.month + frequency);
+                                          
+                                          // Limit "Always" to a reasonable 5 years or end of visible range 
+                                          // We will replicate for 60 iterations (5 years) if "Always" is selected
+                                          int maxIter = durForever ? 60 : durCount; 
+                                          
+                                          while (count < maxIter) {
+                                              provider.updateAmount(cat.id, nextMonth, val);
+                                              nextMonth = DateTime(nextMonth.year, nextMonth.month + frequency);
+                                              count++;
+                                          }
+                                      }
+                                      Navigator.pop(ctx);
+                                  },
+                              )
+                          ],
+                      );
+                  }
+              );
+          }
+      );
+  }
+
+  void _showEditMarginDialog(BuildContext context, DateTime month, double currentAmount, BudgetProvider provider) {
+      final TextEditingController amountController = TextEditingController(text: currentAmount == 0 ? "" : currentAmount.toStringAsFixed(0));
+      
+      showDialog(
+          context: context,
+          builder: (ctx) {
+              return AlertDialog(
+                  backgroundColor: const Color(0xFF1F2937),
+                  title: const Text("Editar Margen", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          Text("Mes: ${DateFormat('MMMM yyyy', 'es').format(month).capitalize()}", style: const TextStyle(color: Colors.white70)),
+                          const SizedBox(height: 16),
+                          TextField(
+                              controller: amountController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                  labelText: "Monto",
+                                  labelStyle: TextStyle(color: Colors.white54),
+                                  prefixText: "\$ ",
+                                  prefixStyle: TextStyle(color: Colors.white),
+                                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                              ),
+                          ),
+                      ],
+                  ),
+                  actions: [
+                      TextButton(child: const Text("Cancelar", style: TextStyle(color: Colors.white54)), onPressed: () => Navigator.pop(ctx)),
+                      ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                          child: const Text("Guardar", style: TextStyle(color: Colors.white)),
+                          onPressed: () {
+                              final val = double.tryParse(amountController.text) ?? 0.0;
+                              provider.updateMargin(month, val);
+                              Navigator.pop(ctx);
+                          },
+                      )
+                  ],
+              );
+          }
+      );
+  }
 }
 
-class _BudgetCell extends StatefulWidget {
-  final double initialValue;
+class _BudgetCell extends StatelessWidget {
+  final double value;
   final bool isReadOnly;
-  final Function(double) onChanged;
   final Color? textColor;
 
-  const _BudgetCell({required this.initialValue, required this.isReadOnly, required this.onChanged, this.textColor});
-
-  @override
-  State<_BudgetCell> createState() => _BudgetCellState();
-}
-
-class _BudgetCellState extends State<_BudgetCell> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: _format(widget.initialValue));
-  }
-  
-  @override
-  void didUpdateWidget(_BudgetCell oldWidget) {
-     super.didUpdateWidget(oldWidget);
-     if (oldWidget.initialValue != widget.initialValue) {
-        _controller.text = _format(widget.initialValue);
-     }
-  }
-
-  String _format(double val) {
-    if (val == 0) return "";
-    return FormatUtils.formatValue(val);
-  }
-
-  double _parse(String text) {
-    if (text.isEmpty) return 0.0;
-    final clean = text.replaceAll('.', '').replaceAll(',', '.'); 
-    return double.tryParse(clean) ?? 0.0;
-  }
+  const _BudgetCell({required this.value, required this.isReadOnly, this.textColor});
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isReadOnly) {
-       return Text(
-         _format(widget.initialValue),
-         style: TextStyle(color: Colors.grey[600], fontSize: 13), // Darker Grey for ReadOnly 
-       );
+    if (value == 0 && !isReadOnly) {
+       return Text("-", style: TextStyle(color: Colors.white24, fontSize: 13));
     }
-
-    return TextFormField(
-      controller: _controller,
-      textAlign: TextAlign.right,
-      style: TextStyle(fontSize: 13, color: widget.textColor ?? Colors.white),
-      decoration: const InputDecoration(border: InputBorder.none, isDense: true),
-      onFieldSubmitted: (value) => widget.onChanged(_parse(value)),
-      cursorColor: Colors.white,
+    return Text(
+      isReadOnly ? FormatUtils.formatCurrency(value, 'UYU') : FormatUtils.formatValue(value),
+      style: TextStyle(
+          color: textColor ?? Colors.white, 
+          fontSize: 13,
+          fontWeight: isReadOnly ? FontWeight.bold : FontWeight.normal
+      ),
     );
   }
 }

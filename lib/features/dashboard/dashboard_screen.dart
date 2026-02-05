@@ -469,7 +469,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     getTitlesWidget: (val, meta) {
                        int index = val.toInt();
                        if (index >= 0 && index < months.length) {
-                           return Padding(padding: const EdgeInsets.only(top: 8), child: Text(DateFormat('d').format(months[index]), style: const TextStyle(color: Colors.white70, fontSize: 10)));
+                           String text;
+                           if (selectedMonth != null) {
+                               text = DateFormat('d').format(months[index]);
+                           } else {
+                               text = DateFormat('MMM-yy', 'es').format(months[index]).capitalize();
+                           }
+                           return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 10)));
                        }
                        return const Text("");
                     },
@@ -563,10 +569,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   borderData: FlBorderData(show: false),
                   sectionsSpace: 2, // Slight gap for better hover separation
-                  centerSpaceRadius: 40,
+                  centerSpaceRadius: 50,
                   sections: topEntries.map((e) {
                       final isTouched = topEntries.indexOf(e) == touchedIndex;
-                      final radius = isTouched ? 50.0 : 45.0; // Subtle grow
+                      final radius = isTouched ? 65.0 : 60.0; // Subtle grow
                       final index = topEntries.indexOf(e);
                       final color = Colors.primaries[index % Colors.primaries.length];
                       
