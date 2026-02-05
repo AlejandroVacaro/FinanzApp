@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../ai_assistant/chat_screen.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/config_provider.dart';
 import '../../models/transaction_model.dart';
@@ -62,6 +63,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
              elevation: 0,
              centerTitle: true,
              scrolledUnderElevation: 0,
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatScreen()));
+            },
+            backgroundColor: Colors.blueAccent,
+            child: const Icon(Icons.smart_toy, color: Colors.white),
           ),
           body: Column(
             children: [
@@ -397,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                    int index = val.toInt();
                    if (index >= 0 && index < keys.length) {
                        final date = keys[index];
-                       String text = isDaily ? DateFormat('d').format(date) : DateFormat('MMM').format(date);
+                       String text = isDaily ? DateFormat('d').format(date) : DateFormat('MMM-yy', 'es').format(date).capitalize();
                        return Padding(padding: const EdgeInsets.only(top: 8), child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 10)));
                    }
                    return const Text("");

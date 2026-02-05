@@ -135,6 +135,22 @@ class FirestoreService {
     });
   }
 
+  Future<List<Transaction>> getRecentTransactions(String uid, {int limit = 50}) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .orderBy('date', descending: true)
+        .limit(limit)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      var data = doc.data();
+      data['id'] = doc.id;
+      return Transaction.fromJson(data);
+    }).toList();
+  }
+
   // --- Config (Categories & Rules) ---
 
   Future<void> saveCategory(String uid, Category category) async {

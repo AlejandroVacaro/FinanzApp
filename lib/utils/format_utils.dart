@@ -24,8 +24,8 @@ class FormatUtils {
     if (currency == 'USD') {
       return "U\$S $valueStr";
     } else {
-      // Default to UYU ($U)
-      return "\$U $valueStr";
+      // Default to UYU ($)
+      return "\$ $valueStr";
     }
   }
 

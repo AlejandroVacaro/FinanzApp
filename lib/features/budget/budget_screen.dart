@@ -299,10 +299,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           
                           // RIGHT GRID
                           Expanded(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              controller: _bodyScrollController,
-                              child: Column(
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.grab,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                controller: _bodyScrollController,
+                                child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
 
@@ -350,6 +352,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               ),
                             ),
                           ),
+                        ),
                         ],
                       ),
                     ),
@@ -442,8 +445,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         onDoubleTap: isPast ? null : () => _showEditBudgetDialog(context, cat, m, amount, budgetProvider),
                         child: _BudgetCell(
                           value: displayValue,
-                          isReadOnly: true, // Always read-only in grid, edit via dialog
-                          textColor: isPast ? Colors.white70 : Colors.white,
+                          isReadOnly: true, // Always read-only in grid
+                          textColor: isPast ? colorText : Colors.white70,
                         ),
                       ),
                     );
