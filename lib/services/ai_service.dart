@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AIService {
-  // CLAVE API CONFIGURADA
-  static const _apiKey = 'AIzaSyA1OI7WuGvZMS-MBUFf4_AeosVD2ikZMSA';
+  // CLAVE API OBTENIDA DE VARIABLES DE ENTORNO (Build)
+  static const _apiKey = String.fromEnvironment('GOOGLE_API_KEY');
   late final GenerativeModel _model;
 
   AIService() {
