@@ -1,108 +1,59 @@
-import 'package:firebase_vertexai/firebase_vertexai.dart';
-import 'firestore_service.dart';
-import '../utils/format_utils.dart';
-import 'package:intl/intl.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AIService {
-  final FirestoreService _firestoreService = FirestoreService();
+  // CLAVE API CONFIGURADA
+  static const _apiKey = 'AIzaSyA1OI7WuGvZMS-MBUFf4_AeosVD2ikZMSA';
   late final GenerativeModel _model;
 
   AIService() {
-    _model = FirebaseVertexAI.instance.generativeModel(
-      model: 'gemini-1.5-flash',
-    );
+    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
   }
 
-  /// Sends a message to the AI, injecting the user's recent financial data as context.
-  Future<String> sendMessage(String userMessage, String uid) async {
+  Future<String> sendMessage(String userMessage) async {
     try {
-      // 1. Build Financial Context
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return "Error: Usuario no identificado.";
+
+      // 1. Obtener contexto financiero (últimos 20 gastos)
       final contextData = await _buildFinancialContext(uid);
       
-      // 2. Create System Prompt
+      // 2. Crear el Prompt del Sistema
       final systemPrompt = '''
-Eres un asesor financiero experto, sarcástico pero muy útil. Tu objetivo es ayudar al usuario a entender sus finanzas basándote en sus datos reales.
-Actúa como un analista que no tiene miedo de decir la verdad si el usuario está gastando demasiado.
-Responde de manera concisa y directa.
-Usa formato Markdown para resaltar números importantes.
+      Eres un asesor financiero personal, sarcástico pero útil.
+      Analiza los siguientes datos recientes del usuario:
+      $contextData
+      
+      Responde a la pregunta del usuario basándote estrictamente en estos datos.
+      Si no hay datos, dímelo. Sé breve y directo.
+      ''';
 
-AQUI ESTAN LOS DATOS FINANCIEROS ACTUALES DEL USUARIO:
-$contextData
-
-PREGUNTA DEL USUARIO:
-"$userMessage"
-
-Responde a la pregunta basándote estrictamente en los datos proporcionados arriba. Si no hay datos suficientes para responder, dilo.
-''';
-
-      // 3. Generate Content
-      final content = [Content.text(systemPrompt)];
+      // 3. Enviar a Gemini
+      final content = [Content.text('$systemPrompt\n\nUsuario: $userMessage')];
       final response = await _model.generateContent(content);
 
-      return response.text ?? "Lo siento, no pude generar una respuesta. Intenta de nuevo.";
+      return response.text ?? "No pude generar una respuesta.";
     } catch (e) {
-      print("Error generating AI response: $e");
-      return "Hubo un error al procesar tu consulta. Asegúrate de tener conexión a internet.";
+      return "Error de conexión con el cerebro: $e";
     }
   }
 
   Future<String> _buildFinancialContext(String uid) async {
-    // A. Recent Transactions
-    final transactions = await _firestoreService.getRecentTransactions(uid, limit: 30);
-    
-    // B. Budget Data
-    final budgetData = await _firestoreService.getBudget(uid);
-    
-    // Format Transactions
-    final txBuffer = StringBuffer();
-    txBuffer.writeln("--- ÚLTIMAS 30 TRANSACCIONES ---");
-    if (transactions.isEmpty) {
-      txBuffer.writeln("(No hay transacciones recientes)");
-    } else {
-      for (var tx in transactions) {
-        final dateStr = DateFormat('dd/MM/yyyy').format(tx.date);
-        final amountStr = FormatUtils.formatCurrency(tx.amount, tx.currency);
-        txBuffer.writeln("- $dateStr | ${tx.description} | $amountStr | Categoría: ${tx.category}");
-      }
-    }
+    // Obtiene las últimas 20 transacciones para dar contexto
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('transactions')
+        .orderBy('date', descending: true)
+        .limit(20)
+        .get();
 
-    // Format Budget (Simplified)
-    final budgetBuffer = StringBuffer();
-    budgetBuffer.writeln("\n--- PRESUPUESTO ACTUAL ---");
-    if (budgetData == null || budgetData.isEmpty) {
-      budgetBuffer.writeln("(No hay presupuesto definido)");
-    } else {
-      // Traverse categories in budget to show current month context if possible, 
-      // but for simplicity, let's just show top-level summary if available or raw structure
-      // Actually, passing the raw JSON map might be confusing for the AI, let's try to extract key numbers if possible.
-      // Since budget structure is complex (Map<CategoryId, Map<Month, Amount>>), let's summarize Key Categories for CURRENT month.
-      
-      final now = DateTime.now();
-      final currentMonthKey = "${now.year}-${now.month.toString().padLeft(2, '0')}";
-      
-      budgetBuffer.writeln("Mes Actual ($currentMonthKey):");
-      
-      // We need category names to make sense of IDs. 
-      // Fetching categories might be expensive here, but let's try to trust the AI can interpret or just skip deep budget analysis for now 
-      // and rely on transactions which have category names.
-      // Ideally, we should fetch categories too.
-      
-      final categories = await _firestoreService.getCategories(uid).first; 
-      // Note: .first on stream might be risky if empty, but usually fine for one-shot fetch. 
-      // Better to use a Future-based fetch in FirestoreService if needed, but getCategories returns a Stream.
-      // Let's use the stream as a future for now.
-      
-      for (var cat in categories) {
-        if (budgetData.containsKey(cat.id)) {
-           final catBudget = budgetData[cat.id] as Map<String, dynamic>;
-           if (catBudget.containsKey(currentMonthKey)) {
-             final amount = catBudget[currentMonthKey];
-             budgetBuffer.writeln("- ${cat.name}: \$${amount is num ? amount.toStringAsFixed(2) : amount}");
-           }
-        }
-      }
-    }
+    if (query.docs.isEmpty) return "El usuario no tiene transacciones recientes.";
 
-    return "${txBuffer.toString()}\n${budgetBuffer.toString()}";
+    return query.docs.map((doc) {
+      final data = doc.data();
+      return "- ${data['date']}: ${data['categoryName']} \$${data['amount']} (${data['description']})";
+    }).join('\n');
   }
 }

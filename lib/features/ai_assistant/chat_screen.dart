@@ -137,7 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      final response = await _aiService.sendMessage(text, uid);
+      final response = await _aiService.sendMessage(text);
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(text: response, isUser: false));
