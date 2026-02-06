@@ -10,9 +10,9 @@ class AIService {
   late final GenerativeModel _model;
 
   AIService() {
-    print("Iniciando AIService. API Key presente: \${_apiKey.isNotEmpty}");
+
     // Fallback seguro para evitar crash inmediato si falta la key, aunque fallará al enviar mensaje
-    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey.isNotEmpty ? _apiKey : 'no-key-configured');
+    _model = GenerativeModel(model: 'gemini-2.0-flash-exp', apiKey: _apiKey.isNotEmpty ? _apiKey : 'no-key-configured');
   }
 
   Future<String> sendMessage(String userMessage) async {
