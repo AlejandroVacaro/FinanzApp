@@ -93,34 +93,94 @@ class _AIChatWidgetState extends State<AIChatWidget> {
               ),
             ).animate().scale(duration: 200.ms, curve: Curves.easeOut, alignment: Alignment.bottomRight).fadeIn(),
 
-          // Floating Button
-          MouseRegion(
-            onEnter: (_) => setState(() => _isHovered = true),
-            onExit: (_) => setState(() => _isHovered = false),
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => setState(() => _isOpen = !_isOpen),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 56,
-                padding: EdgeInsets.symmetric(horizontal: _isHovered ? 20 : 0),
-                width: _isHovered ? 200 : 56,
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                     BoxShadow(color: Colors.blueAccent.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))
-                  ]
-                ),
+          // Floating Mascot
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => setState(() => _isOpen = !_isOpen),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Image.asset('assets/images/robot_avatar.png', width: 32, height: 32),
-                    if (_isHovered) ...[
-                       const SizedBox(width: 8),
-                       const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
-                           .animate().fadeIn(duration: 100.ms)
-                    ]
+                    // Hover Message Bubble
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 200),
+                      opacity: _isHovered ? 1.0 : 0.0,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        transform: Matrix4.translationValues(_isHovered ? 0 : 10, 0, 0),
+                        margin: const EdgeInsets.only(right: 12, bottom: 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))
+                          ],
+                        ),
+                        child: const Text(
+                          "¿En qué puedo ayudarte?",
+                          style: TextStyle(
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Robot Icon
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.elasticOut,
+                      transform: Matrix4.identity()..scale(_isHovered ? 1.1 : 1.0),
+                      height: 80, // Larger size for mascot
+                      width: 80,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Glow effect behind
+                          if (_isHovered)
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.cyan.withOpacity(0.4),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // The Mascot
+                          Image.asset(
+                            'assets/images/robot_mascot.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback if image missing (using icon for now)
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF1F2937),
+                                  shape: BoxShape.circle,
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: const Icon(FontAwesomeIcons.robot, color: Colors.cyanAccent, size: 30),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
