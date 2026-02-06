@@ -94,11 +94,8 @@ class _AIChatWidgetState extends State<AIChatWidget> {
             ).animate().scale(duration: 200.ms, curve: Curves.easeOut, alignment: Alignment.bottomRight).fadeIn(),
 
           // Floating Mascot
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: MouseRegion(
-              onEnter: (_) => setState(() => _isHovered = true),
+          MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
               onExit: (_) => setState(() => _isHovered = false),
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
@@ -166,7 +163,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                 ),
               ),
             ),
-          ),
+
         ],
       ),
     );
