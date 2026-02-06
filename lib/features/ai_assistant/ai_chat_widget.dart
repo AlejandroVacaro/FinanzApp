@@ -56,7 +56,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                     ),
                     child: Row(
                       children: [
-                        Image.asset('assets/images/robot_avatar.png', width: 24, height: 24),
+                        Icon(Icons.forum_rounded, color: Colors.blueAccent, size: 20),
                         const SizedBox(width: 8),
                         const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         const Spacer(),
@@ -134,49 +134,30 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                       ),
                     ),
                     
-                    // Robot Icon
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.elasticOut,
                       transform: Matrix4.identity()..scale(_isHovered ? 1.1 : 1.0),
-                      height: 80, // Larger size for mascot
+                      height: 80,
                       width: 80,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Glow effect behind
-                          if (_isHovered)
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.cyan.withOpacity(0.4),
-                                    blurRadius: 30,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
-                              ),
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blueAccent.withOpacity(0.4),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                )
+                              ],
                             ),
-                          // The Mascot
-                          Image.asset(
-                            'assets/images/robot_mascot.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              // Fallback if image missing (using icon for now)
-                              return Container(
-                                width: 60,
-                                height: 60,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF1F2937),
-                                  shape: BoxShape.circle,
-                                ),
-                                padding: const EdgeInsets.all(12),
-                                child: const Icon(FontAwesomeIcons.robot, color: Colors.cyanAccent, size: 30),
-                              );
-                            },
+                            child: const Icon(Icons.forum_rounded, color: Colors.white, size: 32),
                           ),
                         ],
                       ),
@@ -196,7 +177,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset('assets/images/robot_avatar.png', width: 80, height: 80, color: Colors.white.withOpacity(0.9), colorBlendMode: BlendMode.modulate),
+          Icon(Icons.forum_rounded, size: 80, color: Colors.white.withOpacity(0.1)),
           const SizedBox(height: 12),
           const Text("¿En qué puedo ayudarte?", style: TextStyle(color: Colors.white54)),
           const SizedBox(height: 16),
