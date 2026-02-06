@@ -6,7 +6,7 @@ import '../features/transactions/transactions_screen.dart';
 import '../features/budget/budget_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../config/app_theme.dart';
-import '../features/ai_assistant/ai_chat_widget.dart';
+
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -60,8 +60,7 @@ class _MainLayoutState extends State<MainLayout> {
             ],
           ),
           
-          // Global AI Assistant Widget
-          const AIChatWidget(),
+
         ],
       ),
     );

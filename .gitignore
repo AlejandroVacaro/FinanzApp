@@ -44,5 +44,4 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-lib/config/secrets.dart
-run_with_key.bat
+
