@@ -2,18 +2,17 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../config/secrets.dart';
-
 class AIService {
-  // CLAVE API: Prioridad a Ambiente (Netlify), sino usa Secretos (Local)
-  static const _envKey = String.fromEnvironment('GOOGLE_API_KEY');
-  static final _apiKey = _envKey.isNotEmpty ? _envKey : Secrets.googleApiKey;
+  // CLAVE API: Se obtiene de variables de entorno (Build arguments)
+  // Para desarrollo local usar: --dart-define=GOOGLE_API_KEY=tu_api_key
+  static const _apiKey = String.fromEnvironment('GOOGLE_API_KEY');
   
   late final GenerativeModel _model;
 
   AIService() {
-    print("Iniciando AIService. Fuente: \${_envKey.isNotEmpty ? 'ENV' : 'SECRET'}. Valida: \${_apiKey.isNotEmpty}");
-    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
+    print("Iniciando AIService. API Key presente: \${_apiKey.isNotEmpty}");
+    // Fallback seguro para evitar crash inmediato si falta la key, aunque fallará al enviar mensaje
+    _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey.isNotEmpty ? _apiKey : 'no-key-configured');
   }
 
   Future<String> sendMessage(String userMessage) async {
