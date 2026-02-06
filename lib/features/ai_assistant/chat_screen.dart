@@ -58,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.smart_toy_outlined, size: 80, color: Colors.white.withOpacity(0.1)),
+          Image.asset('assets/images/robot_avatar.png', width: 80, height: 80, color: Colors.white.withOpacity(0.9), colorBlendMode: BlendMode.modulate),
           const SizedBox(height: 16),
           const Text("Pregúntame sobre tus finanzas...", style: TextStyle(color: Colors.white54, fontSize: 16)),
           const SizedBox(height: 8),

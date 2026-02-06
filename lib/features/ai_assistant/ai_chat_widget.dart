@@ -56,7 +56,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(FontAwesomeIcons.robot, color: Colors.blueAccent, size: 20),
+                        Image.asset('assets/images/robot_avatar.png', width: 24, height: 24),
                         const SizedBox(width: 8),
                         const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         const Spacer(),
@@ -115,7 +115,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(FontAwesomeIcons.robot, color: Colors.white),
+                    Image.asset('assets/images/robot_avatar.png', width: 32, height: 32),
                     if (_isHovered) ...[
                        const SizedBox(width: 8),
                        const Text("Asistente Financiero", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
@@ -136,7 +136,7 @@ class _AIChatWidgetState extends State<AIChatWidget> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.smart_toy_outlined, size: 60, color: Colors.white.withOpacity(0.1)),
+          Image.asset('assets/images/robot_avatar.png', width: 80, height: 80, color: Colors.white.withOpacity(0.9), colorBlendMode: BlendMode.modulate),
           const SizedBox(height: 12),
           const Text("¿En qué puedo ayudarte?", style: TextStyle(color: Colors.white54)),
           const SizedBox(height: 16),

@@ -2,12 +2,15 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../config/secrets.dart';
+
 class AIService {
-  // CLAVE API OBTENIDA DE VARIABLES DE ENTORNO (Build)
-  static const _apiKey = String.fromEnvironment('GOOGLE_API_KEY');
+  // Usamos el archivo de secretos para desarrollo local mas sencillo
+  static const _apiKey = Secrets.googleApiKey;
   late final GenerativeModel _model;
 
   AIService() {
+    print("Iniciando AIService con Key: \${_apiKey.isNotEmpty ? 'OK' : 'VACIA'}");
     _model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
   }
 

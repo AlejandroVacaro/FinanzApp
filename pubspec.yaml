@@ -51,5 +51,5 @@ flutter:
   uses-material-design: true
   
   # Assets para el futuro (Logo, iconos custom)
-  # assets:
-  #   - assets/images/
+  assets:
+    - assets/images/
