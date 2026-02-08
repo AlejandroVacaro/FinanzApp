@@ -226,28 +226,36 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 : Column(
                 children: [
                   // 1. HEADER (Months)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0), // Spacing from rounded corner
-                    child: SizedBox(
-                      height: 50,
-                      child: Row(
-                        children: [
-                          Container(
-                              width: fixedColWidth, 
-                              color: const Color(0xFF1F2937),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                   const Text("CONCEPTO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                                   IconButton(
-                                      icon: const Icon(Icons.today, color: Colors.blueAccent, size: 20),
-                                      tooltip: "Ir al mes actual",
-                                      onPressed: _scrollToCurrentMonth
-                                   )
-                                ],
-                              )
-                          ),
-                          Expanded(
+                  // Removed padding top to making it flush or just rounded self. 
+                  // User complained about "piquito" (corner sticking out).
+                  Container(
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1F2937),
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                            width: fixedColWidth, 
+                            decoration: const BoxDecoration(
+                                color: Color(0xFF1F2937),
+                                borderRadius: BorderRadius.only(topLeft: Radius.circular(30)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center, // Centered better
+                              children: [
+                                 const Text("CONCEPTO", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)), // Matched FontSize 13
+                                 const SizedBox(width: 8),
+                                 IconButton(
+                                    icon: const Icon(Icons.today, color: Colors.blueAccent, size: 18),
+                                    tooltip: "Ir al mes actual",
+                                    onPressed: _scrollToCurrentMonth
+                                 )
+                              ],
+                            )
+                        ),
+                        Expanded(
                             child: ListView.builder(
                               controller: _headerScrollController,
                               scrollDirection: Axis.horizontal,
@@ -257,11 +265,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                     border: Border(right: BorderSide(color: Colors.grey[800]!)), 
-                                    color: const Color(0xFF1F2937)
+                                    color: const Color(0xFF1F2937) // Keep color but ensure it doesn't block radius if it was last item? 
+                                    // Actually the parent container has radius. 
+                                    // But children paint on top. 
+                                    // Let's make children transparent or handle last item radius.
                                 ),
                                 child: Text(
                                     DateFormat('MMMM yy', 'es').format(_months[i]).capitalize(), 
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)
                                 ),
                               ),
                             ),
@@ -269,7 +280,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         ],
                       ),
                     ),
-                  ),
                   
                   // 2. BODY (Scrollable Rows)
                   Expanded(
