@@ -594,14 +594,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   void _showEditBudgetDialog(BuildContext context, Category cat, DateTime month, double currentAmount, BudgetProvider provider) {
-      final TextEditingController amountController = TextEditingController(text: currentAmount == 0 ? "" : FormatUtils.formatValue(currentAmount).replaceAll('.', '').replaceAll(',', '.'));
-      // Using raw value for editing might be better, let's just use toString if simple
-      amountController.text = currentAmount == 0 ? "" : currentAmount.toStringAsFixed(0); // Simple integer editing usually preferred or just string
+      // 1. Display as Positive (Absolute) if Expense
+      double displayValue = (cat.type == CategoryType.expense) ? currentAmount.abs() : currentAmount;
       
+      final TextEditingController amountController = TextEditingController(
+          text: displayValue == 0 ? "" : FormatUtils.formatValue(displayValue).replaceAll('.', '').replaceAll(',', '.')
+      );
+      // NOTE: FormatUtils adds thousands separators. We must ensure NumberInputFormatter handles it or we strip it?
+      // Actually standardizing on: "10.000" (String) -> displayed.
+       
       // Replication State
       bool replicate = false;
       int frequency = 1; // Every X months
-      bool durForever = true;
+      bool durForever = false; // Default to Count for safety
       int durCount = 1;
 
       showDialog(
@@ -713,18 +718,20 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                       provider.updateAmount(cat.id, month, val);
                                       
                                       // 2. Replication Logic
+                                      // 2. Replication Logic
                                       if (replicate) {
-                                          int count = 0;
-                                          DateTime nextMonth = DateTime(month.year, month.month + frequency);
-                                          
-                                          // Limit "Always" to a reasonable 5 years or end of visible range 
-                                          // We will replicate for 60 iterations (5 years) if "Always" is selected
                                           int maxIter = durForever ? 60 : durCount; 
                                           
-                                          while (count < maxIter) {
-                                              provider.updateAmount(cat.id, nextMonth, val);
-                                              nextMonth = DateTime(nextMonth.year, nextMonth.month + frequency);
-                                              count++;
+                                          // User Requirement: "si quiero replicarlo 3 veces... sea en el mes que lo estoy poniendo y dos meses más"
+                                          // So Total Occurrences = maxIter.
+                                          // Start includes Month 0 (Current).
+                                          
+                                          // We already updated Current (Iteration 0).
+                                          // So we loop 1 to maxIter-1.
+                                          
+                                          for (int i = 1; i < maxIter; i++) {
+                                              DateTime nextDate = DateTime(month.year, month.month + (i * frequency));
+                                              provider.updateAmount(cat.id, nextDate, val);
                                           }
                                       }
                                       Navigator.pop(ctx);
