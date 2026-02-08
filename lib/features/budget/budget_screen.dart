@@ -11,6 +11,8 @@ import '../../models/transaction_model.dart' as tx_model;
 import 'package:intl/date_symbol_data_local.dart'; // Local setup
 import '../../config/app_theme.dart';
 import '../../utils/format_utils.dart';
+import '../../utils/number_input_formatter.dart';
+import 'package:flutter/services.dart'; // For TextInputFormatter
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -183,8 +185,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
         final margen = budgetProvider.getMargin(m);
 
         // 3. Calculate Result
-        // Result = (Income + Expense + Transfer + Savings) - Margen
-        final result = incomeSum + expenseSum + transferSum + savingsSum - margen; 
+        // Result = (Income + Expense + Transfer) - Savings - Margin
+        // Income tells us available. Expense (negative) reduces it. Transfer (signed) adjusts it.
+        // Savings (positive) are removed from available. Margin (positive) is removed from available.
+        final result = incomeSum + expenseSum + transferSum - savingsSum - margen; 
         finalResults[m] = result;
         
         // 4. Update Carry Over for Next Month
@@ -407,10 +411,15 @@ class _BudgetScreenState extends State<BudgetScreen> {
         children: [
            ...cats.map((c) => Container(
               height: 45, width: 180,
-              padding: const EdgeInsets.only(left: 24),
+              padding: const EdgeInsets.only(left: 24, right: 8), // Added right padding
               alignment: Alignment.centerLeft,
               decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[900]!))),
-              child: Text(c.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Colors.white70)),
+              child: Text(
+                  c.name, 
+                  maxLines: 2, 
+                  overflow: TextOverflow.visible, // Show full name
+                  style: const TextStyle(fontSize: 12, color: Colors.white70) // Slightly smaller font for fit
+              ),
            )), 
            _buildFixedCell(title, isBold: true, bg: color.withOpacity(0.1), textColor: color), // Header/Total at bottom
         ],
@@ -522,6 +531,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             TextField(
               controller: amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              inputFormatters: [NumberInputFormatter()], // Add Formatter
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 labelText: "Monto",
@@ -558,7 +568,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ElevatedButton(
             child: const Text("Guardar"),
             onPressed: () {
-               final val = double.tryParse(amountController.text.replaceAll(',', '.')) ?? 0.0;
+               String cleanText = amountController.text.replaceAll('.', '').replaceAll(',', '.');
+               final val = double.tryParse(cleanText) ?? 0.0;
                if (noteController.text.trim().isEmpty) {
                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("La observación es obligatoria.")));
                  return;
@@ -600,7 +611,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                       const SizedBox(height: 16),
                                       TextField(
                                           controller: amountController,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), // Enable signed
+                                          inputFormatters: [NumberInputFormatter()], // Add Formatter
                                           style: const TextStyle(color: Colors.white),
                                           decoration: const InputDecoration(
                                               labelText: "Monto",
@@ -678,7 +690,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
                                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
                                   child: const Text("Guardar", style: TextStyle(color: Colors.white)),
                                   onPressed: () {
-                                      final val = double.tryParse(amountController.text) ?? 0.0;
+                                      // Remove non-numeric chars (except minus) before parsing
+                                      String cleanText = amountController.text.replaceAll('.', '').replaceAll(',', '.');
+                                      double val = double.tryParse(cleanText) ?? 0.0;
+                                      
+                                      // Auto-Negative for Expenses
+                                      if (cat.type == CategoryType.expense) {
+                                          val = val * -1;
+                                      }
                                       
                                       // 1. Update Current
                                       provider.updateAmount(cat.id, month, val);
@@ -727,6 +746,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           TextField(
                               controller: amountController,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [NumberInputFormatter()], // Add Formatter
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
                                   labelText: "Monto",
@@ -745,7 +765,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
                           child: const Text("Guardar", style: TextStyle(color: Colors.white)),
                           onPressed: () {
-                              final val = double.tryParse(amountController.text) ?? 0.0;
+                              String cleanText = amountController.text.replaceAll('.', '').replaceAll(',', '.');
+                              final val = double.tryParse(cleanText) ?? 0.0;
                               provider.updateMargin(month, val);
                               Navigator.pop(ctx);
                           },

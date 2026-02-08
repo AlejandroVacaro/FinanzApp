@@ -2,8 +2,12 @@
   # 1. Clona Flutter (versión estable)
   # 2. Habilita la web
   # 3. Construye la app
-  command = "rm -rf flutter && git clone https://github.com/flutter/flutter.git -b stable && ./flutter/bin/flutter config --enable-web && ./flutter/bin/flutter build web --release --dart-define=GOOGLE_API_KEY=$GOOGLE_API_KEY"
+  command = "rm -rf flutter && git clone https://github.com/flutter/flutter.git -b stable && ./flutter/bin/flutter config --enable-web && ./flutter/bin/flutter build web --release"
   
   # Carpeta donde Flutter deja los archivos listos para publicar
   publish = "build/web"
 
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

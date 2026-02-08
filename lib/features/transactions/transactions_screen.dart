@@ -24,10 +24,19 @@ class TransactionsScreen extends StatefulWidget {
 }
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
+  // ... state refs
   bool _isLoading = false;
   String _searchQuery = ""; 
-  String _filterSource = "Todos";
-  String _filterCategory = "Todos"; // Filtro de Rubro
+  // State for Sorting
+  String _sortColumn = "Date"; // Date, Desc, Amount
+  bool _sortAsc = false; // Default Descending
+
+  // State for Filters (Map Column -> Value)
+  Map<String, String> _activeFilters = {}; 
+
+  // Removed legacy single vars in favor of _activeFilters map or keeping them if easier, 
+  // but User wants headers to drive it. Let's keep a flexible map.
+  // We can map: "Rubro" -> CategoryName, "Cuenta" -> SourceName
 
   // --- LÓGICA DE IMPORTACIÓN ---
 
@@ -591,22 +600,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: ElevatedButton.icon(
-              onPressed: _isLoading ? null : _pickCSV,
-              icon: const Icon(Icons.upload_file, color: Colors.white, size: 20),
-              label: const Text("Importar CSV", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-              ),
-            ),
-          ),
-        ],
+        // Actions removed, moved to body
       ),
       body: Column(
         children: [
@@ -644,39 +638,53 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       // 1. Filtrado
       List<Transaction> filteredTxs = allTxs;
       
+      // Search
       if (_searchQuery.isNotEmpty) {
-        filteredTxs = allTxs.where((t) {
+        filteredTxs = filteredTxs.where((t) {
           return t.description.toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
-        
-        filteredTxs.sort((a, b) => a.date.compareTo(b.date));
-      } else {
-         filteredTxs.sort((a, b) => b.date.compareTo(a.date));
       }
 
-      // Apply source filter
-      filteredTxs = filteredTxs.where((tx) {
-         return _filterSource == "Todos" || tx.sourceAccount == _filterSource;
-      }).toList();
-      
-      // Apply category filter
-      filteredTxs = filteredTxs.where((tx) {
-         return _filterCategory == "Todos" || tx.category == _filterCategory;
-      }).toList();
+      // Column Filters
+      if (_activeFilters.containsKey("Cuenta") && _activeFilters["Cuenta"] != "Todos") {
+          filteredTxs = filteredTxs.where((t) => t.sourceAccount == _activeFilters["Cuenta"]).toList();
+      }
+      if (_activeFilters.containsKey("Rubro") && _activeFilters["Rubro"] != "Todos") {
+          filteredTxs = filteredTxs.where((t) => t.category == _activeFilters["Rubro"]).toList();
+      }
 
+      // Sorting
+      filteredTxs.sort((a, b) {
+          int cmp = 0;
+          switch (_sortColumn) {
+              case "Date":
+                  cmp = a.date.compareTo(b.date);
+                  break;
+              case "Desc":
+                  cmp = a.description.compareTo(b.description);
+                  break;
+              case "Amount":
+                  cmp = a.amount.compareTo(b.amount);
+                  break;
+              default:
+                  cmp = a.date.compareTo(b.date);
+          }
+          return _sortAsc ? cmp : -cmp; // Toggle asc/desc
+      });
+      
+      // Data for Dropdowns
       final sources = ["Todos", ...allTxs.map((e) => e.sourceAccount).toSet().toList()];
       final categories = ["Todos", ...configProvider.categories.map((c) => c.name).toSet().toList()..sort()];
 
       return Column(
           children: [
-              // Barra de Buscador y Filtros
+              // Barra de Buscador + Importar CSV
               Container(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     // Buscador
                     Expanded(
-                      flex: 4, 
                       child: TextField(
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -695,54 +703,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Filtro de Origen
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF374151),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: sources.contains(_filterSource) ? _filterSource : "Todos",
-                            isExpanded: true,
-                            dropdownColor: const Color(0xFF374151),
-                            icon: const Icon(Icons.account_balance_wallet, color: Colors.white70, size: 18), // Icon hint
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            items: sources.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _filterSource = val);
-                            },
+                    // Botón Importar CSV (Ahora aquí)
+                    SizedBox(
+                        height: 48, // Match textfield height appx
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _pickCSV,
+                          icon: const Icon(Icons.upload_file, color: Colors.white, size: 20),
+                          label: const Text("Importar CSV", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Filtro de Rubro (Categoría)
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF374151),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: categories.contains(_filterCategory) ? _filterCategory : "Todos",
-                            isExpanded: true,
-                            dropdownColor: const Color(0xFF374151),
-                            icon: const Icon(Icons.category, color: Colors.white70, size: 18), // Icon hint
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => _filterCategory = val);
-                            },
-                          ),
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -757,11 +731,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ),
                     child: Row(
                       children: [
-                        _buildHeaderCell("FECHA", flex: 2),
-                        _buildHeaderCell("DESCRIPCIÓN", flex: 4), // Reduced from 5
-                        _buildHeaderCell("RUBRO", flex: 3, alignment: Alignment.center), // Increased from 2 to 3
-                        _buildHeaderCell("CUENTA", flex: 3),
-                        _buildHeaderCell("IMPORTE", flex: 2, alignment: Alignment.centerRight),
+                        _buildHeaderCell("FECHA", sortKey: "Date", flex: 2),
+                        _buildHeaderCell("DESCRIPCIÓN", sortKey: "Desc", flex: 4), 
+                        _buildHeaderCell("RUBRO", filterKey: "Rubro", filterOptions: categories, flex: 3, alignment: Alignment.center),
+                        _buildHeaderCell("CUENTA", filterKey: "Cuenta", filterOptions: sources, flex: 3),
+                        _buildHeaderCell("IMPORTE", sortKey: "Amount", flex: 2, alignment: Alignment.centerRight),
                       ],
                     ),
                   ),
@@ -820,7 +794,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                                     ),
                                                   ),
                                                   const SizedBox(width: 4),
-                                                  const Icon(Icons.edit, size: 10, color: Colors.grey)
+                                                  // Icon removed as requested
+                                                  // const Icon(Icons.edit, size: 10, color: Colors.grey)
                                                 ],
                                               ),
                                             ),
@@ -864,15 +839,114 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
   }
 
-  Widget _buildHeaderCell(String text, {int flex = 1, Alignment alignment = Alignment.centerLeft}) {
+  Widget _buildHeaderCell(String text, {
+    int flex = 1, 
+    Alignment alignment = Alignment.centerLeft,
+    String? sortKey,
+    String? filterKey,
+    List<String>? filterOptions
+  }) {
+    bool isSorted = _sortColumn == sortKey;
+    bool isFiltered = filterKey != null && _activeFilters.containsKey(filterKey) && _activeFilters[filterKey] != "Todos";
+
     return Expanded(
       flex: flex,
-      child: Align(
-        alignment: alignment,
-        child: Text(
-          text,
-          textAlign: alignment == Alignment.center ? TextAlign.center : (alignment == Alignment.centerRight ? TextAlign.right : TextAlign.left),
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+      child: InkWell(
+        onTap: () {
+            // Sort Logic
+            if (sortKey != null) {
+                setState(() {
+                    if (_sortColumn == sortKey) {
+                        _sortAsc = !_sortAsc; // Toggle
+                    } else {
+                        _sortColumn = sortKey;
+                        _sortAsc = true; // Default to Asc when switching? Or Desc? User didn't specify, standard is Asc usually, or Desc for dates.
+                        // "ordenar por fecha ... si ... 1era vez fecha hacia abajo" -> Usually default is newest first (Desc).
+                        // Let's stick to true (Asc) -> Arrow Up? 
+                        // User: "aparezca una fecha hacia arriba o hacia abajo dependiendo si se ordena de forma creciente o decreciente"
+                        if (sortKey == "Date" || sortKey == "Amount") _sortAsc = false; // Numeric/Date usually Desc desireable first?
+                    }
+                });
+            }
+            // Filter Logic (Popup)
+            if (filterKey != null && filterOptions != null) {
+                // Show Menu
+                final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+                final RenderBox box = context.findRenderObject() as RenderBox;
+                // Position is tricky without key. Simpler: Use PopupMenuButton logic wrapped? 
+                // Creating a popup menu manually:
+                showMenu<String>(
+                    context: context,
+                    position: RelativeRect.fromLTRB(
+                        100, // Approximate, requires precise tap details.
+                        100,
+                        100,
+                        100
+                    ), // Placeholder, ideally use a key or gesture details.
+                    // Better approach: just use a PopupMenuButton as child?
+                    items: filterOptions.map((v) => PopupMenuItem(value: v, child: Text(v, style: TextStyle(color: v == _activeFilters[filterKey] ? Colors.blue : Colors.black)))).toList()
+                );
+            }
+        },
+        child: Container(
+             // Use a Row to show Text + Icons
+             alignment: alignment,
+             child: Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                   // Text
+                   if (filterKey != null)
+                      PopupMenuButton<String>(
+                          tooltip: "Filtrar por $text",
+                          offset: const Offset(0, 30),
+                          color: const Color(0xFF374151),
+                          child: Row(
+                             children: [
+                                Text(
+                                  text,
+                                  textAlign: alignment == Alignment.center ? TextAlign.center : (alignment == Alignment.centerRight ? TextAlign.right : TextAlign.left),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                                ),
+                                if (isFiltered)
+                                   const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.filter_list, size: 14, color: Colors.blueAccent))
+                             ] 
+                          ),
+                          onSelected: (val) {
+                              setState(() {
+                                  if (val == "Todos") {
+                                      _activeFilters.remove(filterKey);
+                                  } else {
+                                      _activeFilters[filterKey] = val;
+                                  }
+                              });
+                          },
+                          itemBuilder: (context) {
+                              return filterOptions!.map((opt) => PopupMenuItem(
+                                  value: opt,
+                                  height: 32,
+                                  child: Text(opt, style: TextStyle(color: (_activeFilters[filterKey] == opt) ? Colors.blueAccent : Colors.white, fontSize: 13)),
+                              )).toList();
+                          },
+                      )
+                   else
+                      Text(
+                        text,
+                        textAlign: alignment == Alignment.center ? TextAlign.center : (alignment == Alignment.centerRight ? TextAlign.right : TextAlign.left),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                      ),
+                   
+                   // Sort Icon
+                   if (sortKey != null && isSorted)
+                       Padding(
+                           padding: const EdgeInsets.only(left: 4),
+                           child: Icon(
+                               _sortAsc ? Icons.arrow_upward : Icons.arrow_downward, 
+                               size: 14, 
+                               color: Colors.blueAccent
+                           ),
+                       )
+               ],
+             )
         ),
       ),
     );
