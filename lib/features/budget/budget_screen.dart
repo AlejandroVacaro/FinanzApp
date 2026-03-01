@@ -179,7 +179,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
              transferSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
         }
         for (var c in savingsCats) {
-             savingsSum += isPast ? _getRealSum(txProvider.transactions, c.name, m) : budgetProvider.getAmount(c.id, m);
+             savingsSum += isPast ? (_getRealSum(txProvider.transactions, c.name, m) * -1) : budgetProvider.getAmount(c.id, m);
         }
         
         final margen = budgetProvider.getMargin(m);
@@ -449,7 +449,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                   final amount = budgetProvider.getAmount(cat.id, m);
                   final isPast = m.isBefore(DateTime(DateTime.now().year, DateTime.now().month));
                   
-                  final realVal = _getRealSum(txProvider.transactions, cat.name, m);
+                  double realVal = _getRealSum(txProvider.transactions, cat.name, m);
+                  if (cat.type == CategoryType.savings) {
+                      realVal = realVal * -1;
+                  }
                   
                   // For past months, we show the Real Value. For current/future, the Budgeted Amount.
                   final displayValue = isPast ? realVal : amount;
@@ -499,7 +502,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
                
                for (var c in cats) {
                    if (isPast) {
-                       total += _getRealSum(txProvider.transactions, c.name, m);
+                       double realVal = _getRealSum(txProvider.transactions, c.name, m);
+                       if (c.type == CategoryType.savings) {
+                           realVal = realVal * -1;
+                       }
+                       total += realVal;
                    } else {
                        total += budgetProvider.getAmount(c.id, m);
                    }

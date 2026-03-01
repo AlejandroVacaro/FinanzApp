@@ -9,6 +9,7 @@ import '../../models/transaction_model.dart';
 import '../../models/category.dart';
 import '../../config/app_theme.dart';
 import '../../utils/format_utils.dart';
+import '../../providers/budget_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -41,6 +42,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
       final txProvider = Provider.of<TransactionsProvider>(context);
       final configProvider = Provider.of<ConfigProvider>(context);
+      final budgetProvider = Provider.of<BudgetProvider>(context);
       
       final allTxs = txProvider.transactions;
       
@@ -198,7 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                                           ],
                                                                       ),
                                                                       const SizedBox(height: 16),
-                                                                      Expanded(child: _buildCategoryLineChart(filteredTxs)), // Pass Filtered
+                                                                      Expanded(child: _buildCategoryLineChart(filteredTxs, budgetProvider, configProvider)), // Pass Filtered
                                                                   ],
                                                               ),
                                                           ),
@@ -451,7 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
   }
 
-  Widget _buildCategoryLineChart(List<Transaction> txs) {
+  Widget _buildCategoryLineChart(List<Transaction> txs, BudgetProvider budgetProvider, ConfigProvider configProvider) {
        if (selectedCategoryForChart == null) return const Center(child: Text("Selecciona un rubro", style: TextStyle(color: Colors.white54)));
 
        final data = _prepareMonthlyData(txs);
@@ -459,6 +461,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
        if (months.isEmpty) return const SizedBox();
 
        final minMax = _getMinMaxY(data, ["category"]);
+       
+       // Find category ID for budget
+       final cat = configProvider.categories.firstWhere(
+           (c) => c.name == selectedCategoryForChart, 
+           orElse: () => const Category(id: '', name: '', type: CategoryType.expense, icon: '', color: '')
+       );
+       final catId = cat.id;
+
+       // Adjust Y max for budget line
+       if (catId.isNotEmpty) {
+           double maxBudget = 0;
+           for (var m in months) {
+               // budgetProvider gets monthly values
+               final bVal = budgetProvider.getAmount(catId, DateTime(m.year, m.month)).abs();
+               if (bVal > maxBudget) maxBudget = bVal;
+           }
+           if (maxBudget * 1.1 > minMax[1]) {
+               minMax[1] = maxBudget * 1.1;
+           }
+       }
 
        return LineChart(
           LineChartData(
@@ -508,6 +530,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
              borderData: FlBorderData(show: false),
              lineBarsData: [
                  _buildLine(months, data, "category", Colors.purpleAccent),
+                 if (catId.isNotEmpty)
+                     LineChartBarData(
+                         spots: months.asMap().entries.map((e) {
+                             final dt = e.value;
+                             final bVal = budgetProvider.getAmount(catId, DateTime(dt.year, dt.month)).abs();
+                             return FlSpot(e.key.toDouble(), bVal);
+                         }).toList(),
+                         isCurved: true,
+                         color: Colors.grey,
+                         barWidth: 2,
+                         dashArray: [5, 5],
+                         isStrokeCapRound: true,
+                         dotData: const FlDotData(show: false),
+                         belowBarData: BarAreaData(show: false),
+                     )
              ]
           )
        );
