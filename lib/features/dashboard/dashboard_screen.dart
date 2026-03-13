@@ -68,6 +68,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           body: Column(
             children: [
+              if (txProvider.error != null)
+                Container(
+                  color: Colors.redAccent,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    txProvider.error!,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               Expanded(
                 child: Container(
                   decoration: const BoxDecoration(

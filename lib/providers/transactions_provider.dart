@@ -8,15 +8,23 @@ class TransactionsProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   StreamSubscription? _subscription;
   String? _uid;
+  String? _error;
+
+  String? get error => _error;
 
   // Initialize with User ID
   void init(String uid) {
     _uid = uid;
     _subscription?.cancel();
     _subscription = _firestoreService.getTransactions(uid).listen((data) {
+      _error = null;
       // Sort by date ascending
       data.sort((a, b) => a.date.compareTo(b.date));
       _transactions = _calculateRunningBalances(data).reversed.toList();
+      notifyListeners();
+    }, onError: (e, stackTrace) {
+      _error = "Error cargando transacciones: $e";
+      print("Stream error: $e\n$stackTrace");
       notifyListeners();
     });
   }
