@@ -15,6 +15,7 @@ class Transaction extends Equatable {
   final double originalAmount;
   final double amountUYU;
   final double amountUSD;
+  final double? exchangeRate;
 
   Transaction({
     String? id,
@@ -29,6 +30,7 @@ class Transaction extends Equatable {
     this.originalAmount = 0.0,
     this.amountUYU = 0.0,
     this.amountUSD = 0.0,
+    this.exchangeRate,
   }) : id = id ?? "${DateTime.now().microsecondsSinceEpoch}_${(description.hashCode + amount.hashCode).abs()}";
 
   Transaction copyWith({
@@ -44,6 +46,7 @@ class Transaction extends Equatable {
     double? originalAmount,
     double? amountUYU,
     double? amountUSD,
+    double? exchangeRate,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -58,6 +61,7 @@ class Transaction extends Equatable {
       originalAmount: originalAmount ?? this.originalAmount,
       amountUYU: amountUYU ?? this.amountUYU,
       amountUSD: amountUSD ?? this.amountUSD,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
     );
   }
 
@@ -75,6 +79,7 @@ class Transaction extends Equatable {
       'originalAmount': originalAmount,
       'amountUYU': amountUYU,
       'amountUSD': amountUSD,
+      'exchangeRate': exchangeRate,
     };
   }
 
@@ -92,6 +97,7 @@ class Transaction extends Equatable {
       originalAmount: json['originalAmount']?.toDouble() ?? 0.0,
       amountUYU: json['amountUYU']?.toDouble() ?? 0.0,
       amountUSD: json['amountUSD']?.toDouble() ?? 0.0,
+      exchangeRate: json['exchangeRate']?.toDouble(),
     );
   }
 
@@ -109,5 +115,6 @@ class Transaction extends Equatable {
     originalAmount,
     amountUYU,
     amountUSD,
+    exchangeRate,
   ];
 }

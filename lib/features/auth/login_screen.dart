@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../config/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,135 +55,153 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Animated Rocket Logo
-              Container(
-                width: 100,
-                height: 100,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF4FA3FF)], // AppColors (Purple to Blue)
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.backgroundDark, Color(0xFF131B2D)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Align(
+          alignment: const Alignment(0, -0.2), // Sube un poco el contenido
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Animated Rocket Logo
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primaryPurple, AppColors.secondaryBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryPurple.withValues(alpha: 0.5),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      )
+                    ]
                   ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 50),
-              ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
-              const SizedBox(height: 20),
-              const Text(
-                'FinanzApp',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 40),
-              Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Bienvenido',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C3E50),
+                  child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 50),
+                ).animate().scale(duration: 800.ms, curve: Curves.easeOutBack),
+                const SizedBox(height: 20),
+                const Text(
+                  'FinanzApp',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.5, end: 0),
+                const SizedBox(height: 40),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundLight,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.panelBorder, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    const SizedBox(height: 30),
-                    TextField(
-                      controller: _emailController,
-                      style: const TextStyle(color: Color(0xFF2C3E50)),
-                      decoration: InputDecoration(
-                        labelText: 'Email',
-                        labelStyle: const TextStyle(color: Color(0xFF546E7A)),
-                        prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF546E7A)),
-                        filled: true,
-                        fillColor: const Color(0xFFF0F2F5),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Bienvenido',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textWhite,
                         ),
                       ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _passwordController,
-                      style: const TextStyle(color: Color(0xFF2C3E50)),
-                      decoration: InputDecoration(
-                        labelText: 'Contraseña',
-                        labelStyle: const TextStyle(color: Color(0xFF546E7A)),
-                        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF546E7A)),
-                        filled: true,
-                        fillColor: const Color(0xFFF0F2F5),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                      const SizedBox(height: 30),
+                      TextField(
+                        controller: _emailController,
+                        style: const TextStyle(color: AppColors.textWhite),
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          labelStyle: const TextStyle(color: AppColors.textGrey),
+                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textGrey),
+                          filled: true,
+                          fillColor: AppColors.backgroundDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.accentCyan, width: 1.5),
+                          ),
                         ),
-                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCFD8DC)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                       ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 30),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2C3E50),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _passwordController,
+                        style: const TextStyle(color: AppColors.textWhite),
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          labelStyle: const TextStyle(color: AppColors.textGrey),
+                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textGrey),
+                          filled: true,
+                          fillColor: AppColors.backgroundDark,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppColors.accentCyan, width: 1.5),
+                          ),
                         ),
+                        obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _login(),
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Ingresar',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      const SizedBox(height: 30),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryPurple,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 8,
+                          shadowColor: AppColors.primaryPurple.withValues(alpha: 0.5),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Ingresar',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1, end: 0),
+              ],
+            ),
           ),
         ),
       ),

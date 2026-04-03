@@ -52,6 +52,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       );
 
       if (result != null) {
+        // Pedir la cotización ANTES de procesar nada
+        double? rate = await _showExchangeRateDialog(context, config.exchangeRate);
+        if (rate == null) return; // Se canceló la importación
+        if (rate != config.exchangeRate) {
+           config.setExchangeRate(rate); // Autoguardar
+        }
+
         setState(() => _isLoading = true);
         
         List<Transaction> totalNewTransactions = [];
@@ -303,6 +310,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                          valPesos = amount;
                     } else {
                          valDolares = amount;
+                         valPesos = amount * config.exchangeRate;
                     }
                     valOriginal = amount;
 
@@ -329,6 +337,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     if (valDolares.abs() > 0) {
                         amount = valDolares;
                         currency = "USD";
+                        if (valPesos == 0) {
+                             valPesos = valDolares * config.exchangeRate;
+                        }
                     } else if (valPesos.abs() > 0) {
                         amount = valPesos;
                         currency = "UYU";
@@ -360,6 +371,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     originalAmount: valOriginal,
                     amountUYU: valPesos,
                     amountUSD: valDolares,
+                    exchangeRate: config.exchangeRate,
                 ));
 
               } catch (e) {
@@ -438,6 +450,63 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       // Si solo tiene puntos (1234.56), Dart lo parsea directo.
 
       return double.tryParse(val) ?? 0.0;
+  }
+
+  Future<double?> _showExchangeRateDialog(BuildContext context, double defaultRate) async {
+      final TextEditingController ctrl = TextEditingController(text: defaultRate.toString());
+      
+      return showDialog<double>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1F2937),
+              title: const Text("Cotización del Dólar", style: TextStyle(color: Colors.white)),
+              content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                      const Text("Los archivos seleccionados podrían contener pagos en dólares.", style: TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 8),
+                      const Text("Confirma la cotización a utilizar para convertirlos a pesos uruguayos. Este valor quedará fijado para los movimientos de esta importación.", style: TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 16),
+                      TextField(
+                          controller: ctrl,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: Colors.white, fontSize: 18),
+                          decoration: const InputDecoration(
+                              labelText: "Valor de 1 USD en \$U",
+                              labelStyle: TextStyle(color: Colors.white54),
+                              prefixIcon: Icon(Icons.currency_exchange, color: Colors.blueAccent),
+                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                          ),
+                      )
+                  ],
+              ),
+              actions: [
+                  TextButton(
+                      child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+                      onPressed: () => Navigator.pop(ctx, null)
+                  ),
+                  ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text("Confirmar e Importar", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                           String valText = ctrl.text.replaceAll(',', '.');
+                           double? parsed = double.tryParse(valText);
+                           if (parsed != null && parsed > 0) {
+                               Navigator.pop(ctx, parsed);
+                           } else {
+                               ModernFeedback.showError(ctx, "Valor inválido", "Por favor ingresa un número válido mayor a 0.");
+                           }
+                      }
+                  ),
+              ],
+          )
+      );
   }
 
   void _showCategoryEditDialog(BuildContext context, Transaction tx) {
@@ -819,8 +888,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           alignment: Alignment.centerRight,
                                           child: Tooltip(
                                               message: tx.currency == 'USD' 
-                                                  ? "En Pesos: ${FormatUtils.formatCurrency(tx.amountUYU, 'UYU')}"
-                                                  : "En Dólares: ${FormatUtils.formatCurrency(tx.amountUSD, 'USD')}",
+                                                  ? "En Pesos: ${FormatUtils.formatCurrency(tx.amountUYU, 'UYU')} (Cot: \$${tx.exchangeRate?.toStringAsFixed(2) ?? '-'})"
+                                                  : "En Pesos: ${FormatUtils.formatCurrency(tx.amountUYU, 'UYU')}",
                                               child: Text(
                                                   FormatUtils.formatCurrency(tx.amount, tx.currency), 
                                                   style: TextStyle(color: amountColor, fontWeight: FontWeight.bold, fontSize: 13),
