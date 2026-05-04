@@ -187,6 +187,29 @@ class TransactionsProvider extends ChangeNotifier {
     }
   }
 
+  Future<int> recalculatePastUSDRates(double rate) async {
+    if (_uid == null) return 0;
+    
+    final matchingTxs = _transactions.where((tx) => tx.currency == 'USD' || tx.amountUSD != 0).toList();
+    if (matchingTxs.isEmpty) return 0;
+    
+    final updatedTxs = matchingTxs.map((tx) {
+      double baseUSD = tx.amountUSD != 0 ? tx.amountUSD : tx.amount;
+      return tx.copyWith(
+        amountUYU: baseUSD * rate,
+        exchangeRate: rate,
+      );
+    }).toList();
+    
+    try {
+      await _firestoreService.batchUpdateTransactionsChunked(_uid!, updatedTxs);
+      return updatedTxs.length;
+    } catch (e) {
+      debugPrint("Error recalculating rates: $e");
+      rethrow;
+    }
+  }
+
   List<Transaction> _calculateRunningBalances(List<Transaction> sortedTxs) {
     double runningBalance = 0.0;
     final List<Transaction> result = [];

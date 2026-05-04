@@ -128,6 +128,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                    color: Colors.orange,
                                    onTap: () => _showRestoreDialog(context),
                                  ),
+                                 // FIX RATES
+                                 _buildOptionCard(
+                                   context,
+                                   title: "Corregir Cotización",
+                                   desc: "Actualiza USD histórico",
+                                   icon: Icons.currency_exchange,
+                                   color: Colors.blueAccent,
+                                   onTap: () => _showRecalculateRateDialog(context),
+                                 ),
                                  // DELETE
                                  _buildOptionCard(
                                    context,
@@ -591,6 +600,63 @@ class _ManageRulesDialogState extends State<_ManageRulesDialog> {
 }
 
 // --- DIALOGO DE BORRADO ---
+void _showRecalculateRateDialog(BuildContext context) {
+  final provider = Provider.of<ConfigProvider>(context, listen: false);
+  final txProvider = Provider.of<TransactionsProvider>(context, listen: false);
+  final ctrl = TextEditingController(text: provider.exchangeRate.toString());
+
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: const Color(0xFF1F2937),
+      title: const Text("Recalcular Historial USD", style: TextStyle(color: Colors.white)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Esta acción actualizará todos tus movimientos en Dólares previos utilizando la cotización que ingreses a continuación.", style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: ctrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: "Cotización del Dólar",
+              labelStyle: TextStyle(color: Colors.white54),
+              prefixIcon: Icon(Icons.currency_exchange, color: Colors.blueAccent),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancelar", style: TextStyle(color: Colors.grey))),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+          onPressed: () async {
+            String valText = ctrl.text.replaceAll(',', '.');
+            double? rate = double.tryParse(valText);
+            if (rate != null && rate > 0) {
+              Navigator.pop(ctx);
+              try {
+                int updated = await txProvider.recalculatePastUSDRates(rate);
+                if (context.mounted) ModernFeedback.showSuccess(context, "Se recalcularon $updated movimientos en USD.");
+              } catch (e) {
+                if (context.mounted) ModernFeedback.showError(context, "Error", e.toString());
+              }
+            } else {
+              ModernFeedback.showError(ctx, "Error", "Ingresa una cotización válida.");
+            }
+          },
+          child: const Text("Aplicar y Guardar", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
 void _showDeleteDialog(BuildContext context) {
   DateTime? startDate;
   DateTime? endDate;
